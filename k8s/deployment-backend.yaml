@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cortex-nids-backend
+  namespace: default
+  labels:
+    app: cortex-nids-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cortex-nids-backend
+  template:
+    metadata:
+      labels:
+        app: cortex-nids-backend
+    spec:
+      containers:
+        - name: backend
+          image: cortex-nids-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: cortex-nids-config
+            - secretRef:
+                name: cortex-nids-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          volumeMounts:
+            - name: predictions-storage
+              mountPath: /app/predictions
+      volumes:
+        - name: predictions-storage
+          persistentVolumeClaim:
+            claimName: cortex-nids-pvc

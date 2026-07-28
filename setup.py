@@ -1,0 +1,43 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="cortex-nids",
+    version="1.0.0",
+    description="Machine Learning-Based Enterprise Network Intrusion Detection System",
+    author="Enterprise Security Operations",
+    python_requires=">=3.11",
+    packages=find_packages(),
+    include_package_data=True,
+    install_requires=[
+        "pyyaml>=6.0.1",
+        "python-dotenv>=1.0.1",
+        "pydantic>=2.8.2",
+        "python-multipart>=0.0.9",
+        "numpy>=1.26.4",
+        "pandas>=2.2.2",
+        "matplotlib>=3.9.1",
+        "seaborn>=0.13.2",
+        "scikit-learn>=1.5.1",
+        "imbalanced-learn>=0.12.3",
+        "xgboost>=2.1.0",
+        "lightgbm>=4.5.0",
+        "catboost>=1.2.5",
+        "psutil>=6.0.0",
+        "pyjwt>=2.8.0",
+        "scapy>=2.5.0",
+        "websockets>=12.0",
+        "requests>=2.32.3",
+        "fastapi>=0.111.1",
+        "uvicorn>=0.30.3",
+        "reportlab>=4.2.2",
+    ],
+    entry_points={
+        "console_scripts": [
+            "nids-api=scripts.run_api:main",
+            "nids-monitor=scripts.run_live_monitor:main",
+            "nids-siem=scripts.run_siem:main",
+            "nids-soar=scripts.run_soar:main",
+            "nids-security=scripts.run_security:main",
+        ],
+    },
+)

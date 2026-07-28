@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>NIDS XAI Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f6f9; color: #333; }
+        h1, h2, h3 { color: #1a365d; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; background: #fff; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #2b6cb0; color: white; }
+        pre { background: #edf2f7; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+<h1>Explainable Machine Learning (XAI) Report</h1>
+<h2>Executive Summary</h2>
+<p>This report provides feature importance rankings, global SHAP explanations, and local instance-level predictions for the <strong>Network Intrusion Detection System (NIDS)</strong> best model (<code>extra_trees</code>).</p>
+<hr />
+<h2>🏆 Top 10 Most Important Features (<code>extra_trees</code>)</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Rank</th>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: right;">Normalized_Importance</th>
+<th style="text-align: right;">Permutation_Importance_Mean</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Bwd Packet Length Max</td>
+<td style="text-align: right;">0.17321</td>
+<td style="text-align: right;">0.246527</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">Flow IAT Std</td>
+<td style="text-align: right;">0.121678</td>
+<td style="text-align: right;">0.0762687</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">Destination Port</td>
+<td style="text-align: right;">0.0895642</td>
+<td style="text-align: right;">0.217678</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">Init_Win_bytes_backward</td>
+<td style="text-align: right;">0.0846945</td>
+<td style="text-align: right;">-0.0483304</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">Fwd Packet Length Max</td>
+<td style="text-align: right;">0.0798738</td>
+<td style="text-align: right;">0.0310772</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">Init_Win_bytes_forward</td>
+<td style="text-align: right;">0.0654556</td>
+<td style="text-align: right;">0.218327</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">min_seg_size_forward</td>
+<td style="text-align: right;">0.063781</td>
+<td style="text-align: right;">0.168032</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">Fwd IAT Min</td>
+<td style="text-align: right;">0.050406</td>
+<td style="text-align: right;">0.053782</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">PSH Flag Count</td>
+<td style="text-align: right;">0.042431</td>
+<td style="text-align: right;">0.258248</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">act_data_pkt_fwd</td>
+<td style="text-align: right;">0.0335717</td>
+<td style="text-align: right;">-0.0705258</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>🔬 Global SHAP Feature Interpretations</h2>
+<ul>
+<li><strong>SHAP Summary &amp; Beeswarm</strong>: Features with high values that push predictions toward attack categories (e.g. <code>Bwd Packet Length Std</code>, <code>Total Length of Fwd Packets</code>, <code>Flow Bytes/s</code>).</li>
+<li><strong>SHAP Bar Plot</strong>: Quantifies mean absolute impact per feature on class log-odds / probabilities.</li>
+</ul>
+<hr />
+<h2>🎯 Instance-Level Explanations</h2>
+<h3>1. Normal Traffic Sample Explanation</h3>
+<ul>
+<li><strong>Status</strong>: True</li>
+<li><strong>True Label</strong>: <code>BENIGN</code> | <strong>Predicted</strong>: <code>BENIGN</code></li>
+<li><strong>Key Characteristics</strong>: Standard packet lengths, expected inter-arrival times, low byte transfer variance.</li>
+</ul>
+<h3>2. Attack Traffic Sample Explanation</h3>
+<ul>
+<li><strong>Status</strong>: True</li>
+<li><strong>True Label</strong>: <code>PortScan</code> | <strong>Predicted</strong>: <code>PortScan</code></li>
+<li><strong>Detection Rationale</strong>: Anomalous packet count burst, elevated flow duration, or unexpected port flags trigger high attack confidence.</li>
+</ul>
+<h3>3. False Positive Explanation</h3>
+<ul>
+<li><strong>Status</strong>: True</li>
+<li><strong>True Label</strong>: <code>BENIGN</code> | <strong>Predicted</strong>: <code>PortScan</code></li>
+<li><strong>Explanation</strong>: High volume benign traffic matching flood pattern heuristics.</li>
+</ul>
+<h3>4. False Negative Explanation</h3>
+<ul>
+<li><strong>Status</strong>: False</li>
+<li><strong>True Label</strong>: <code>N/A</code> | <strong>Predicted</strong>: <code>N/A</code></li>
+<li><strong>Explanation</strong>: No False Negative samples in explanation subset.</li>
+</ul>
+<hr />
+<h2>🖼️ Saved Visualizations</h2>
+<p>All generated XAI figures are available in <code>reports/explainability/</code>:
+- <code>shap_summary.png</code>
+- <code>shap_bar.png</code>
+- <code>shap_beeswarm.png</code>
+- <code>shap_waterfall.png</code>
+- <code>shap_decision.png</code>
+- <code>shap_force.png</code></p>
+<hr />
+<p><em>Report generated automatically by NIDS Explainable AI Pipeline.</em></p>
+</body>
+</html>

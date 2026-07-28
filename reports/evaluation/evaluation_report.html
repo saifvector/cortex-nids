@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIDS Model Evaluation Report</title>
+    
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 1200px;
+               margin: 40px auto; padding: 0 24px; background: #f8f9fa; color: #212529; }
+        h1 { color: #1a1a2e; border-bottom: 3px solid #4C72B0; padding-bottom: 10px; }
+        h2 { color: #16213e; border-bottom: 1px solid #dee2e6; padding-bottom: 6px; }
+        h3 { color: #0f3460; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px;
+                font-size: 0.85em; overflow-x: auto; display: block; }
+        th { background: #4C72B0; color: #fff; padding: 8px 12px; text-align: center; }
+        td { padding: 6px 12px; border: 1px solid #dee2e6; }
+        tr:nth-child(even) { background: #e9ecef; }
+        blockquote { background: #d4edda; border-left: 4px solid #28a745;
+                     padding: 10px 16px; margin: 16px 0; border-radius: 4px; }
+        code { background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+        pre { background: #1a1a2e; color: #f8f8f2; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    </style>
+    
+</head>
+<body>
+<h1>NIDS Model Evaluation Report</h1>
+<p>Comprehensive evaluation of optimized classifiers on the CICIDS2017 test partition.</p>
+<hr />
+<h2>📋 Dataset Summary</h2>
+<ul>
+<li><strong>Train Partition</strong>: <code>2,017,889</code> rows × <code>20</code> features</li>
+<li><strong>Test Partition</strong>: <code>504,473</code> rows × <code>20</code> features</li>
+</ul>
+<hr />
+<h2>🏆 Recommended Model</h2>
+<blockquote>
+<p><strong><code>extra_trees</code></strong> — selected based on highest macro F1, high recall, and lowest FPR.</p>
+</blockquote>
+<hr />
+<h2>📊 Category Leaders</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Category</th>
+<th style="text-align: center;">Best Model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Best Accuracy</strong></td>
+<td style="text-align: center;"><code>extra_trees</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Best Recall</strong></td>
+<td style="text-align: center;"><code>lightgbm</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Best Precision</strong></td>
+<td style="text-align: center;"><code>extra_trees</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Best F1</strong></td>
+<td style="text-align: center;"><code>extra_trees</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Lowest FPR</strong></td>
+<td style="text-align: center;"><code>extra_trees</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Lowest Prediction Time</strong></td>
+<td style="text-align: center;"><code>random_forest</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Best ROC-AUC</strong></td>
+<td style="text-align: center;"><code>lightgbm</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Best MCC</strong></td>
+<td style="text-align: center;"><code>extra_trees</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>📈 Full Metric Comparison (Ranked)</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Model</strong></th>
+<th style="text-align: center;"><strong>Accuracy</strong></th>
+<th style="text-align: center;"><strong>Balanced Accuracy</strong></th>
+<th style="text-align: center;"><strong>Precision (Macro)</strong></th>
+<th style="text-align: center;"><strong>Precision (Weighted)</strong></th>
+<th style="text-align: center;"><strong>Recall (Macro)</strong></th>
+<th style="text-align: center;"><strong>Recall (Weighted)</strong></th>
+<th style="text-align: center;"><strong>F1 Score (Macro)</strong></th>
+<th style="text-align: center;"><strong>F1 Score (Weighted)</strong></th>
+<th style="text-align: center;"><strong>ROC-AUC (OvR)</strong></th>
+<th style="text-align: center;"><strong>PR-AUC</strong></th>
+<th style="text-align: center;"><strong>Matthews Correlation Coefficient</strong></th>
+<th style="text-align: center;"><strong>Cohen's Kappa</strong></th>
+<th style="text-align: center;"><strong>False Positive Rate</strong></th>
+<th style="text-align: center;"><strong>False Negative Rate</strong></th>
+<th style="text-align: center;"><strong>Specificity</strong></th>
+<th style="text-align: center;"><strong>Sensitivity</strong></th>
+<th style="text-align: center;"><strong>Prediction Time (s)</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>extra_trees</strong></td>
+<td style="text-align: center;">0.99870</td>
+<td style="text-align: center;">0.91314</td>
+<td style="text-align: center;">0.90358</td>
+<td style="text-align: center;">0.99879</td>
+<td style="text-align: center;">0.91314</td>
+<td style="text-align: center;">0.99870</td>
+<td style="text-align: center;">0.90053</td>
+<td style="text-align: center;">0.99873</td>
+<td style="text-align: center;">0.99944</td>
+<td style="text-align: center;">0.93697</td>
+<td style="text-align: center;">0.99570</td>
+<td style="text-align: center;">0.99569</td>
+<td style="text-align: center;">0.00013</td>
+<td style="text-align: center;">0.08686</td>
+<td style="text-align: center;">0.99987</td>
+<td style="text-align: center;">0.91314</td>
+<td style="text-align: center;">0.89706</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>random_forest</strong></td>
+<td style="text-align: center;">0.99755</td>
+<td style="text-align: center;">0.93378</td>
+<td style="text-align: center;">0.86573</td>
+<td style="text-align: center;">0.99856</td>
+<td style="text-align: center;">0.93378</td>
+<td style="text-align: center;">0.99755</td>
+<td style="text-align: center;">0.87927</td>
+<td style="text-align: center;">0.99798</td>
+<td style="text-align: center;">0.99939</td>
+<td style="text-align: center;">0.92581</td>
+<td style="text-align: center;">0.99191</td>
+<td style="text-align: center;">0.99189</td>
+<td style="text-align: center;">0.00019</td>
+<td style="text-align: center;">0.06622</td>
+<td style="text-align: center;">0.99981</td>
+<td style="text-align: center;">0.93378</td>
+<td style="text-align: center;">0.25652</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>lightgbm</strong></td>
+<td style="text-align: center;">0.99771</td>
+<td style="text-align: center;">0.95367</td>
+<td style="text-align: center;">0.79315</td>
+<td style="text-align: center;">0.99833</td>
+<td style="text-align: center;">0.95367</td>
+<td style="text-align: center;">0.99771</td>
+<td style="text-align: center;">0.81964</td>
+<td style="text-align: center;">0.99792</td>
+<td style="text-align: center;">0.99991</td>
+<td style="text-align: center;">0.93325</td>
+<td style="text-align: center;">0.99244</td>
+<td style="text-align: center;">0.99243</td>
+<td style="text-align: center;">0.00016</td>
+<td style="text-align: center;">0.04633</td>
+<td style="text-align: center;">0.99984</td>
+<td style="text-align: center;">0.95367</td>
+<td style="text-align: center;">3.04994</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>xgboost</strong></td>
+<td style="text-align: center;">0.99437</td>
+<td style="text-align: center;">0.93521</td>
+<td style="text-align: center;">0.71516</td>
+<td style="text-align: center;">0.99681</td>
+<td style="text-align: center;">0.93521</td>
+<td style="text-align: center;">0.99437</td>
+<td style="text-align: center;">0.75663</td>
+<td style="text-align: center;">0.99535</td>
+<td style="text-align: center;">0.99988</td>
+<td style="text-align: center;">0.89841</td>
+<td style="text-align: center;">0.98166</td>
+<td style="text-align: center;">0.98152</td>
+<td style="text-align: center;">0.00039</td>
+<td style="text-align: center;">0.06479</td>
+<td style="text-align: center;">0.99961</td>
+<td style="text-align: center;">0.93521</td>
+<td style="text-align: center;">0.94365</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>catboost</strong></td>
+<td style="text-align: center;">0.98411</td>
+<td style="text-align: center;">0.93056</td>
+<td style="text-align: center;">0.61556</td>
+<td style="text-align: center;">0.99483</td>
+<td style="text-align: center;">0.93056</td>
+<td style="text-align: center;">0.98411</td>
+<td style="text-align: center;">0.65825</td>
+<td style="text-align: center;">0.98887</td>
+<td style="text-align: center;">0.99950</td>
+<td style="text-align: center;">0.86446</td>
+<td style="text-align: center;">0.95040</td>
+<td style="text-align: center;">0.94921</td>
+<td style="text-align: center;">0.00108</td>
+<td style="text-align: center;">0.06944</td>
+<td style="text-align: center;">0.99892</td>
+<td style="text-align: center;">0.93056</td>
+<td style="text-align: center;">0.29487</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>🔍 Per-Model Strengths &amp; Weaknesses</h2>
+<h3>extra_trees</h3>
+<p><strong>Strengths:</strong>
+- Best Accuracy
+- Best Precision
+- Best F1
+- Lowest FPR
+- Best MCC
+- High intrusion recall (≥ 90%)
+- Very low false positive rate (≤ 0.1%)
+- Fast inference (&lt; 1 s on full test set)</p>
+<p><strong>Weaknesses:</strong>
+- —</p>
+<h3>random_forest</h3>
+<p><strong>Strengths:</strong>
+- Lowest Prediction Time
+- High intrusion recall (≥ 90%)
+- Very low false positive rate (≤ 0.1%)
+- Fast inference (&lt; 1 s on full test set)</p>
+<p><strong>Weaknesses:</strong>
+- —</p>
+<h3>lightgbm</h3>
+<p><strong>Strengths:</strong>
+- Best Recall
+- Best ROC-AUC
+- High intrusion recall (≥ 90%)
+- Very low false positive rate (≤ 0.1%)</p>
+<p><strong>Weaknesses:</strong>
+- —</p>
+<h3>xgboost</h3>
+<p><strong>Strengths:</strong>
+- High intrusion recall (≥ 90%)
+- Very low false positive rate (≤ 0.1%)
+- Fast inference (&lt; 1 s on full test set)</p>
+<p><strong>Weaknesses:</strong>
+- —</p>
+<h3>catboost</h3>
+<p><strong>Strengths:</strong>
+- High intrusion recall (≥ 90%)
+- Fast inference (&lt; 1 s on full test set)</p>
+<p><strong>Weaknesses:</strong>
+- Below-par macro F1 (&lt; 0.70)</p>
+<hr />
+<h2>📄 Classification Report — extra_trees (Recommended Model)</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Class</th>
+<th style="text-align: right;">precision</th>
+<th style="text-align: right;">recall</th>
+<th style="text-align: right;">f1-score</th>
+<th style="text-align: right;">support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">BENIGN</td>
+<td style="text-align: right;">0.999847</td>
+<td style="text-align: right;">0.999056</td>
+<td style="text-align: right;">0.999451</td>
+<td style="text-align: right;">419297</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">Bot</td>
+<td style="text-align: right;">0.73374</td>
+<td style="text-align: right;">0.923274</td>
+<td style="text-align: right;">0.817667</td>
+<td style="text-align: right;">391</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">DDoS</td>
+<td style="text-align: right;">0.99957</td>
+<td style="text-align: right;">0.999688</td>
+<td style="text-align: right;">0.999629</td>
+<td style="text-align: right;">25603</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">DoS GoldenEye</td>
+<td style="text-align: right;">0.995148</td>
+<td style="text-align: right;">0.997083</td>
+<td style="text-align: right;">0.996115</td>
+<td style="text-align: right;">2057</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">DoS Hulk</td>
+<td style="text-align: right;">0.997805</td>
+<td style="text-align: right;">0.999508</td>
+<td style="text-align: right;">0.998656</td>
+<td style="text-align: right;">34570</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">DoS Slowhttptest</td>
+<td style="text-align: right;">0.987631</td>
+<td style="text-align: right;">0.992352</td>
+<td style="text-align: right;">0.989986</td>
+<td style="text-align: right;">1046</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">DoS Slowloris</td>
+<td style="text-align: right;">0.997209</td>
+<td style="text-align: right;">0.995357</td>
+<td style="text-align: right;">0.996283</td>
+<td style="text-align: right;">1077</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">FTP-Patator</td>
+<td style="text-align: right;">0.999158</td>
+<td style="text-align: right;">0.999158</td>
+<td style="text-align: right;">0.999158</td>
+<td style="text-align: right;">1187</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">Heartbleed</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">Infiltration</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.571429</td>
+<td style="text-align: right;">0.727273</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">PortScan</td>
+<td style="text-align: right;">0.990013</td>
+<td style="text-align: right;">0.998734</td>
+<td style="text-align: right;">0.994354</td>
+<td style="text-align: right;">18164</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">SSH-Patator</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">644</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">Web Attack – Brute Force</td>
+<td style="text-align: right;">0.769841</td>
+<td style="text-align: right;">0.659864</td>
+<td style="text-align: right;">0.710623</td>
+<td style="text-align: right;">294</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">Web Attack – SQL Injection</td>
+<td style="text-align: right;">0.666667</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">Web Attack – XSS</td>
+<td style="text-align: right;">0.417143</td>
+<td style="text-align: right;">0.561538</td>
+<td style="text-align: right;">0.478689</td>
+<td style="text-align: right;">130</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">accuracy</td>
+<td style="text-align: right;">0.998704</td>
+<td style="text-align: right;">0.998704</td>
+<td style="text-align: right;">0.998704</td>
+<td style="text-align: right;">0.998704</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">macro avg</td>
+<td style="text-align: right;">0.903585</td>
+<td style="text-align: right;">0.913136</td>
+<td style="text-align: right;">0.900525</td>
+<td style="text-align: right;">504473</td>
+</tr>
+<tr>
+<td style="text-align: left;">extra_trees</td>
+<td style="text-align: left;">weighted avg</td>
+<td style="text-align: right;">0.998795</td>
+<td style="text-align: right;">0.998704</td>
+<td style="text-align: right;">0.998733</td>
+<td style="text-align: right;">504473</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>📂 Plots Generated</h2>
+<p>All figures are saved in <code>reports/evaluation/plots/</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Plot</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>*_confusion_matrix.png</code></td>
+<td style="text-align: left;">Raw confusion matrix per model</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>*_normalized_confusion_matrix.png</code></td>
+<td style="text-align: left;">Row-normalized confusion matrix per model</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>roc_curve.png</code></td>
+<td style="text-align: left;">Macro-average OvR ROC curves (all models)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>precision_recall_curve.png</code></td>
+<td style="text-align: left;">Macro-average PR curves (all models)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>*_feature_importance.png</code></td>
+<td style="text-align: left;">Top-20 feature importances per model</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>*_learning_curve.png</code></td>
+<td style="text-align: left;">Training vs. validation F1 score (learning curve)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>*_validation_curve.png</code></td>
+<td style="text-align: left;">Hyperparameter sensitivity curve</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>calibration_curve.png</code></td>
+<td style="text-align: left;">Probability calibration comparison</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>model_comparison.png</code></td>
+<td style="text-align: left;">Side-by-side metric comparison bar chart</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Report generated automatically by NIDS Model Evaluation pipeline.</em></p>
+</body>
+</html>

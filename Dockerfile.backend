@@ -1,0 +1,52 @@
+# Multi-stage Production Dockerfile for NIDS FastAPI Backend & Prediction Engine
+FROM python:3.11-slim as builder
+
+WORKDIR /app
+
+# Install build dependencies & packet capture libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    make \
+    libpcap-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt pyjwt python-dotenv scapy websockets requests uvicorn fastapi python-multipart
+
+# Final Production Stage
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install runtime libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpcap0.8 \
+    libgomp1 \
+    curl \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy python packages and binaries from builder stage
+COPY --from=builder /usr/local /usr/local
+
+# Copy project source code
+COPY . .
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8000
+
+# Expose FastAPI Port
+EXPOSE 8000
+
+# Healthcheck probe
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Run production Uvicorn web server
+CMD ["python", "scripts/run_api.py", "--host", "0.0.0.0", "--port", "8000"]

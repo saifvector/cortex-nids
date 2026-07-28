@@ -1,0 +1,33 @@
+# Production-ready requirements for Enterprise Network Intrusion Detection System
+# Target Python Version: 3.11+
+
+# Core Utilities & Config Management
+pyyaml==6.0.1
+python-dotenv==1.0.1
+pydantic==2.8.2
+python-multipart==0.0.9
+
+# Data Processing & Numerical Computing
+numpy==1.26.4
+pandas==2.2.2
+matplotlib==3.9.1
+seaborn==0.13.2
+
+# Machine Learning & Modeling
+scikit-learn==1.5.1
+imbalanced-learn==0.12.3
+xgboost==2.1.0
+lightgbm==4.5.0
+catboost==1.2.5
+psutil==6.0.0
+
+# Security, Web & Networking
+pyjwt==2.8.0
+scapy==2.5.0
+websockets==12.0
+requests==2.32.3
+fastapi==0.111.1
+uvicorn==0.30.3
+
+# PDF Report Generation
+reportlab==4.2.2

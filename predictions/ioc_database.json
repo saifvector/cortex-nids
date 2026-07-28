@@ -1,0 +1,30 @@
+{
+    "whitelist": [
+        "192.168.1.1",
+        "::1",
+        "127.0.0.1"
+    ],
+    "blacklist": [
+        "203.0.113.55",
+        "198.51.100.14",
+        "185.220.101.5"
+    ],
+    "known_malicious_ips": {
+        "185.220.101.5": {
+            "category": "Tor Exit Node",
+            "threat_score": 95,
+            "first_seen": "2026-01-10"
+        },
+        "198.51.100.14": {
+            "category": "Botnet C2",
+            "threat_score": 90,
+            "first_seen": "2026-02-14"
+        },
+        "203.0.113.55": {
+            "category": "DDoS Attacker",
+            "threat_score": 85,
+            "first_seen": "2026-03-01"
+        }
+    },
+    "known_iocs": {}
+}

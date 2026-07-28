@@ -1,0 +1,7 @@
+Metric,Value,Unit
+Model Load Time,452.09,ms
+Single Inference Latency,20.476,ms
+API Post /predict Latency,29.354,ms
+Prediction Throughput,48.8,queries/sec
+Memory Consumption (RSS),171.18,MB
+CPU Usage,8.0,%

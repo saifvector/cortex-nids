@@ -1,0 +1,22 @@
+{
+    "users": {
+        "admin": {
+            "id": "USR-1001",
+            "username": "admin",
+            "password_hash": "1fd6558f46b46b3ca5ecb0fc14b02373$b7c78ac4de37ec0c810daf59b3c10bc267a39498796379e36d3e530c90321767",
+            "role": "Administrator",
+            "email": "admin@cortex-nids.local",
+            "is_active": true,
+            "created_at": "2026-07-26 14:02:02"
+        },
+        "analyst": {
+            "id": "USR-1002",
+            "username": "analyst",
+            "password_hash": "8ee8b69b1ad9240f54f55d9ad12c5f4e$86eb3c31e980d5c2f3e84b9fd861edf1a607b50d6e7a826f8d502d2d5aff2797",
+            "role": "SOC Analyst",
+            "email": "analyst@cortex-nids.local",
+            "is_active": true,
+            "created_at": "2026-07-26 14:02:03"
+        }
+    }
+}

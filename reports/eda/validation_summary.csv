@@ -1,0 +1,11 @@
+metric,value
+total_rows,2522362.0
+total_columns,79.0
+duplicate_rows_count,0.0
+duplicate_rows_percentage,0.0
+missing_values_count,0.0
+overall_null_percentage,0.0
+constant_features_count,8.0
+duplicate_columns_count,12.0
+infinite_values_count,0.0
+memory_usage_mb,1653.2155876159668

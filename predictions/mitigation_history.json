@@ -1,0 +1,29 @@
+{
+    "history": [
+        {
+            "timestamp": "2026-07-26 13:58:00",
+            "playbook": "dos_mitigation",
+            "attack_type": "DoS Hulk",
+            "target_ip": "185.220.101.5",
+            "actions_taken": [
+                {
+                    "action": "firewall_block",
+                    "details": {
+                        "ip": "185.220.101.5",
+                        "rule_name": "CORTEX_NIDS_BLOCK_185_220_101_5",
+                        "reason": "Auto-Triggered: dos_mitigation",
+                        "blocked_at": "2026-07-26 13:58:00",
+                        "duration_sec": 7200,
+                        "status": "simulated"
+                    }
+                },
+                {
+                    "action": "rate_limit",
+                    "target_port": 80,
+                    "limit": "10 req/s"
+                }
+            ],
+            "status": "completed"
+        }
+    ]
+}

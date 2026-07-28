@@ -1,0 +1,22 @@
+{
+    "model_versioning": {
+        "model_name": "LGBMClassifier",
+        "model_version": "1.0.0",
+        "training_date": "2026-07-25 19:23:02",
+        "dataset_version": "CICIDS2017",
+        "feature_count": 20,
+        "model_type": "LGBMClassifier"
+    },
+    "inference_metrics": {
+        "total_records_predicted": 2,
+        "average_confidence": 1.0,
+        "average_risk_score": 80.0,
+        "average_latency_ms": 8.181
+    },
+    "attack_breakdown": {
+        "DoS GoldenEye": 2
+    },
+    "risk_level_breakdown": {
+        "Critical": 2
+    }
+}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NIDS Prediction Engine Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 40px auto; padding: 0 20px; background: #f8f9fa; color: #212529; }
+        h1 { color: #1a1a2e; border-bottom: 3px solid #28a745; padding-bottom: 8px; }
+        h2 { color: #16213e; border-bottom: 1px solid #dee2e6; padding-bottom: 4px; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 0.9em; }
+        th { background: #28a745; color: white; padding: 8px 12px; text-align: center; }
+        td { padding: 6px 12px; border: 1px solid #dee2e6; }
+        tr:nth-child(even) { background: #e9ecef; }
+        code { background: #e9ecef; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+<h1>NIDS Prediction Engine Report</h1>
+<h2>📌 Model Versioning Metadata</h2>
+<ul>
+<li><strong>Model Name</strong>: <code>LGBMClassifier</code> (<code>LGBMClassifier</code>)</li>
+<li><strong>Model Version</strong>: <code>1.0.0</code></li>
+<li><strong>Training Date</strong>: <code>2026-07-25 19:23:02</code></li>
+<li><strong>Dataset Version</strong>: <code>CICIDS2017</code></li>
+<li><strong>Feature Count</strong>: <code>20</code></li>
+</ul>
+<hr />
+<h2>⚡ Inference Performance Metrics</h2>
+<ul>
+<li><strong>Total Records Predicted</strong>: <code>2</code></li>
+<li><strong>Average Prediction Confidence</strong>: <code>1.0000</code></li>
+<li><strong>Average Risk Score</strong>: <code>80.00 / 100</code></li>
+<li><strong>Average Latency</strong>: <code>8.181 ms / record</code></li>
+</ul>
+<hr />
+<h2>🚨 Attack Category Breakdown</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Attack Type</th>
+<th style="text-align: center;">Record Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>DoS GoldenEye</code></td>
+<td style="text-align: center;"><strong>2</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>🛡️ Risk Level Distribution</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Risk Level</th>
+<th style="text-align: center;">Record Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Critical</strong></td>
+<td style="text-align: center;"><code>2</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Report generated automatically by NIDS Prediction Service Engine.</em></p>
+</body>
+</html>

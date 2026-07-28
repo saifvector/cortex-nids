@@ -1,0 +1,90 @@
+/// <reference types="vite/client" />
+import axios from 'axios';
+import {
+  RootResponse,
+  HealthResponse,
+  ModelInfoResponse,
+  SingleFlowInput,
+  SinglePredictionResponse,
+  BatchSummaryResponse,
+  MetricsResponse,
+  FeatureImportanceResponse,
+} from '../types/api';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const getWebSocketUrl = (): string => {
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = API_BASE_URL.replace(/^https?:\/\//, '');
+  return `${wsProtocol}//${host}/ws/alerts`;
+};
+
+export const apiService = {
+  // GET /
+  getRoot: async (): Promise<RootResponse> => {
+    const res = await apiClient.get<RootResponse>('/');
+    return res.data;
+  },
+
+  // GET /health
+  getHealth: async (): Promise<HealthResponse> => {
+    const res = await apiClient.get<HealthResponse>('/health');
+    return res.data;
+  },
+
+  // GET /model
+  getModelInfo: async (): Promise<ModelInfoResponse> => {
+    const res = await apiClient.get<ModelInfoResponse>('/model');
+    return res.data;
+  },
+
+  // POST /predict
+  predictSingle: async (input: SingleFlowInput): Promise<SinglePredictionResponse> => {
+    const res = await apiClient.post<SinglePredictionResponse>('/predict', input);
+    return res.data;
+  },
+
+  // POST /batch_predict
+  predictBatchCsv: async (file: File): Promise<BatchSummaryResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await apiClient.post<BatchSummaryResponse>('/batch_predict', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
+  // GET /metrics
+  getMetrics: async (): Promise<MetricsResponse> => {
+    const res = await apiClient.get<MetricsResponse>('/metrics');
+    return res.data;
+  },
+
+  // GET /feature_importance
+  getFeatureImportance: async (): Promise<FeatureImportanceResponse> => {
+    const res = await apiClient.get<FeatureImportanceResponse>('/feature_importance');
+    return res.data;
+  },
+
+  // GET /alerts
+  getAlerts: async (params?: Record<string, any>): Promise<any[]> => {
+    const res = await apiClient.get<any[]>('/alerts', { params });
+    return res.data;
+  },
+
+  // GET /alerts/daily_report
+  getDailyReport: async (): Promise<any> => {
+    const res = await apiClient.get<any>('/alerts/daily_report');
+    return res.data;
+  },
+};

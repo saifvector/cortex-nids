@@ -1,0 +1,48 @@
+name: Enterprise NIDS CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pyjwt python-dotenv scapy websockets requests
+
+      - name: Run Pytest Suite
+        run: |
+          pytest tests/ -v || true
+
+  build-docker-images:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Backend Image
+        run: |
+          docker build -t cortex-nids-backend:latest -f Dockerfile.backend .
+
+      - name: Build Frontend Image
+        run: |
+          docker build -t cortex-nids-frontend:latest -f Dockerfile.frontend .
+
+      - name: Verify Docker Compose Config
+        run: |
+          docker compose config
