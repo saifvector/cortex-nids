@@ -135,12 +135,14 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+!data/processed/preprocessing_pipeline.joblib
 data/external/*
 !data/external/.gitkeep
 logs/*
 !logs/.gitkeep
 models/*
 !models/.gitkeep
+!models/best_model.joblib
 
 # System files
 .DS_Store
