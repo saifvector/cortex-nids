@@ -1,0 +1,42 @@
+name: Automated GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    name: Create Release & Upload Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PDF Generation Dependencies
+        run: |
+          pip install reportlab pydantic pandas numpy scikit-learn lightgbm xgboost catboost matplotlib seaborn pyjwt requests
+
+      - name: Generate Release Documentation PDFs
+        run: |
+          python scripts/generate_pdf_docs.py
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            reports/Project_Report.pdf
+            reports/Architecture.pdf
+            reports/Installation.pdf
+            reports/testing/test_report.md
+            reports/testing/performance_report.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

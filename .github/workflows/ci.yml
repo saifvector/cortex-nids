@@ -1,48 +1,51 @@
-name: Enterprise NIDS CI/CD Pipeline
+name: NIDS Continuous Integration
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
 
 jobs:
   test-and-lint:
+    name: Build, Lint & Test
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
+          cache: 'pip'
 
-      - name: Install Dependencies
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest pyjwt python-dotenv scapy websockets requests
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
-      - name: Run Pytest Suite
+      - name: Run Environment Check
         run: |
-          pytest tests/ -v || true
+          python scripts/check_environment.py
 
-  build-docker-images:
-    needs: test-and-lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build Backend Image
+      - name: Run Pytest Test Suite
         run: |
-          docker build -t cortex-nids-backend:latest -f Dockerfile.backend .
+          pytest --cov=src --cov-report=xml:coverage.xml --cov-report=term-missing tests/
 
-      - name: Build Frontend Image
+      - name: Run Performance Benchmark
         run: |
-          docker build -t cortex-nids-frontend:latest -f Dockerfile.frontend .
+          python scripts/run_benchmark.py
 
-      - name: Verify Docker Compose Config
-        run: |
-          docker compose config
+      - name: Upload Test Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml

@@ -1,0 +1,50 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+  json:
+    format: '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}'
+    datefmt: "%Y-%m-%dT%H:%M:%SZ"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: standard
+    stream: ext://sys.stdout
+
+  file_app:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: standard
+    filename: logs/nids_app.log
+    maxBytes: 10485760 # 10 MB
+    backupCount: 5
+    encoding: utf-8
+
+  file_audit:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/audit.log
+    maxBytes: 10485760
+    backupCount: 10
+    encoding: utf-8
+
+loggers:
+  nids:
+    level: DEBUG
+    handlers: [console, file_app]
+    propagate: false
+
+  nids.audit:
+    level: INFO
+    handlers: [file_audit]
+    propagate: false
+
+root:
+  level: INFO
+  handlers: [console, file_app]

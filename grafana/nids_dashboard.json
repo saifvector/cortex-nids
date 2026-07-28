@@ -1,0 +1,68 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Total Predictions Performed",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "nids_predictions_total", "legendFormat": "Predictions" }
+      ]
+    },
+    {
+      "title": "Average Prediction Latency (ms)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        { "expr": "nids_prediction_latency_ms_avg", "legendFormat": "Latency" }
+      ]
+    },
+    {
+      "title": "CPU Usage (%)",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "nids_cpu_usage_percent", "legendFormat": "CPU" }
+      ]
+    },
+    {
+      "title": "Memory Consumption (MB)",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        { "expr": "nids_memory_rss_bytes / 1048576", "legendFormat": "RAM" }
+      ]
+    },
+    {
+      "title": "Real-Time Attack Category Breakdown",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        { "expr": "sum by (attack_type) (nids_attacks_total)", "legendFormat": "{{attack_type}}" }
+      ]
+    },
+    {
+      "title": "Prediction Throughput (Queries/sec)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        { "expr": "rate(nids_predictions_total[1m])", "legendFormat": "QPS" }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["nids", "security", "mlops"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Cortex NIDS - Executive Security Operations Center",
+  "uid": "cortex-nids-soc"
+}
