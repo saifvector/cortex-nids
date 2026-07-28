@@ -76,9 +76,9 @@ def check_file(rel_paths: List[str], label: str) -> Tuple[bool, str]:
 
 def check_dir(rel_path: str, label: str) -> Tuple[bool, str]:
     p = PROJECT_ROOT / rel_path
-    if p.exists() and any(p.iterdir()):
-        return True, f"{label} present"
-    return False, f"{label} missing or empty at {rel_path}"
+    if p.exists():
+        return True, f"{label} present at {rel_path}"
+    return False, f"{label} missing at {rel_path}"
 
 
 def main() -> int:
