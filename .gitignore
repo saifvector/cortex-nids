@@ -136,6 +136,7 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 !data/processed/preprocessing_pipeline.joblib
+!data/processed/feature_names.json
 data/external/*
 !data/external/.gitkeep
 logs/*
@@ -143,6 +144,7 @@ logs/*
 models/*
 !models/.gitkeep
 !models/best_model.joblib
+!models/feature_names.json
 
 # System files
 .DS_Store

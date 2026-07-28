@@ -1,0 +1,22 @@
+[
+    "Destination Port",
+    "Total Length of Fwd Packets",
+    "Fwd Packet Length Max",
+    "Bwd Packet Length Max",
+    "Flow Bytes/s",
+    "Flow IAT Std",
+    "Fwd IAT Min",
+    "Fwd Header Length",
+    "Bwd Header Length",
+    "Bwd Packets/s",
+    "FIN Flag Count",
+    "PSH Flag Count",
+    "Init_Win_bytes_forward",
+    "Init_Win_bytes_backward",
+    "act_data_pkt_fwd",
+    "min_seg_size_forward",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Idle Std"
+]
