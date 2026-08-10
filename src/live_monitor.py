@@ -118,6 +118,20 @@ class LiveMonitor:
             # Predict using Module 8 Predictor
             pred_result = self.predictor.predict_single(flow_feats)
 
+            # Record real-time metrics
+            try:
+                from api.metrics_manager import metrics_manager
+                metrics_manager.record_prediction(
+                    attack_type=pred_result.get("Attack_Type", "BENIGN"),
+                    confidence=float(pred_result.get("Prediction_Confidence", 0.99)),
+                    risk_score=float(pred_result.get("Risk_Score", 0.0)),
+                    risk_level=pred_result.get("Risk_Level", "Low"),
+                    latency_ms=float(pred_result.get("Prediction_Time_ms", 0.035)),
+                    count=1
+                )
+            except Exception:
+                pass
+
             # Store Alert
             alert_event = self.alert_engine.process_prediction(
                 prediction_result=pred_result,

@@ -9,6 +9,7 @@ from typing import Callable, Dict
 from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from api.metrics_manager import metrics_manager
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ def setup_middleware(app: FastAPI) -> None:
 
     @app.middleware("http")
     async def request_logging_and_rate_limit(request: Request, call_next: Callable) -> Response:
+        metrics_manager.increment_requests()
         t0 = time.perf_counter()
         client_ip = request.client.host if request.client else "unknown"
 

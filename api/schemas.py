@@ -103,9 +103,16 @@ class BatchSummaryResponse(BaseModel):
 
 class MetricsResponse(BaseModel):
     prediction_count: int = Field(..., json_schema_extra={"example": 12500})
+    attack_count: int = Field(0, json_schema_extra={"example": 250})
+    benign_count: int = Field(0, json_schema_extra={"example": 12250})
     average_latency_ms: float = Field(..., json_schema_extra={"example": 0.032})
     average_confidence: float = Field(..., json_schema_extra={"example": 0.9961})
+    critical_alerts: int = Field(0, json_schema_extra={"example": 45})
+    high_alerts: int = Field(0, json_schema_extra={"example": 80})
+    medium_alerts: int = Field(0, json_schema_extra={"example": 125})
+    low_alerts: int = Field(0, json_schema_extra={"example": 12250})
     requests_served: int = Field(..., json_schema_extra={"example": 42})
+    last_prediction_time: str = Field(..., json_schema_extra={"example": "2026-08-10 21:40:00"})
 
 
 class FeatureImportanceResponse(BaseModel):

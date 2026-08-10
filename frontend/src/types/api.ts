@@ -65,9 +65,16 @@ export interface BatchSummaryResponse {
 
 export interface MetricsResponse {
   prediction_count: number;
+  attack_count?: number;
+  benign_count?: number;
   average_latency_ms: number;
   average_confidence: number;
+  critical_alerts?: number;
+  high_alerts?: number;
+  medium_alerts?: number;
+  low_alerts?: number;
   requests_served: number;
+  last_prediction_time?: string;
 }
 
 export interface FeatureImportanceItem {

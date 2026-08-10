@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from api.exceptions import ModelNotLoadedException, InvalidInputFormatException, BatchProcessingException
+from api.metrics_manager import metrics_manager
 from src.prediction_service import PredictionService
 from src.utils.utils import get_absolute_path, load_json
 
@@ -33,19 +34,18 @@ class APIService:
             self.prediction_service = None
             self.model_loaded = False
 
-        # Live metric counters
-        self.requests_served: int = 0
-        self.predictions_performed: int = 0
-        self.total_latency_ms: float = 0.0
-        self.total_confidence: float = 0.0
-
     def increment_requests(self) -> None:
-        self.requests_served += 1
+        metrics_manager.increment_requests()
 
     def record_metrics(self, count: int, latency_ms: float, confidence: float) -> None:
-        self.predictions_performed += count
-        self.total_latency_ms += latency_ms * count
-        self.total_confidence += confidence * count
+        metrics_manager.record_prediction(
+            attack_type="BENIGN",
+            confidence=confidence,
+            risk_score=0.0,
+            risk_level="Low",
+            latency_ms=latency_ms,
+            count=count
+        )
 
     def get_model_info(self) -> Dict[str, Any]:
         """Returns model metadata and training details."""
@@ -68,10 +68,13 @@ class APIService:
 
         try:
             result = self.prediction_service.predictor.predict_single(flow_data)
-            self.record_metrics(
-                count=1,
-                latency_ms=result.get("Prediction_Time_ms", 0.035),
-                confidence=result.get("Prediction_Confidence", 0.99)
+            metrics_manager.record_prediction(
+                attack_type=result.get("Attack_Type", "BENIGN"),
+                confidence=float(result.get("Prediction_Confidence", 0.99)),
+                risk_score=float(result.get("Risk_Score", 0.0)),
+                risk_level=result.get("Risk_Level", "Low"),
+                latency_ms=float(result.get("Prediction_Time_ms", 0.035)),
+                count=1
             )
             return result
         except Exception as e:
@@ -93,11 +96,18 @@ class APIService:
             predictions_df, summary = self.prediction_service.run_prediction_pipeline(df)
 
             im = summary["inference_metrics"]
-            self.record_metrics(
-                count=im["total_records_predicted"],
-                latency_ms=im["average_latency_ms"],
-                confidence=im["average_confidence"]
-            )
+            ab = summary.get("attack_breakdown", {})
+            rb = summary.get("risk_level_breakdown", {})
+
+            for atk, cnt in ab.items():
+                metrics_manager.record_prediction(
+                    attack_type=atk,
+                    confidence=im["average_confidence"],
+                    risk_score=im["average_risk_score"],
+                    risk_level="Critical" if atk != "BENIGN" else "Low",
+                    latency_ms=im["average_latency_ms"],
+                    count=cnt
+                )
 
             result_summary = {
                 "total_records_predicted": im["total_records_predicted"],
@@ -115,15 +125,7 @@ class APIService:
 
     def get_metrics(self) -> Dict[str, Any]:
         """Returns runtime API and prediction performance metrics."""
-        avg_lat = (self.total_latency_ms / self.predictions_performed) if self.predictions_performed > 0 else 0.035
-        avg_conf = (self.total_confidence / self.predictions_performed) if self.predictions_performed > 0 else 0.9958
-
-        return {
-            "prediction_count": self.predictions_performed,
-            "average_latency_ms": float(round(avg_lat, 3)),
-            "average_confidence": float(round(avg_conf, 4)),
-            "requests_served": self.requests_served
-        }
+        return metrics_manager.get_metrics()
 
     def get_feature_importance(self) -> Dict[str, Any]:
         """Returns top feature importances."""
