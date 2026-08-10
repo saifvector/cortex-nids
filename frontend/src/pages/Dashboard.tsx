@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AreaChart, Area, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import {
   Activity, Clock, Award, Server, Radio, ArrowUpRight, Sparkles
