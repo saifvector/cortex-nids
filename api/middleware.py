@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Simple in-memory rate limiter tracker: IP -> List[timestamps]
 _RATE_LIMIT_STORE: Dict[str, list] = {}
-RATE_LIMIT_REQUESTS = 100  # Max requests per window
+RATE_LIMIT_REQUESTS = 500  # Max requests per window
 RATE_LIMIT_WINDOW_SEC = 60  # Window in seconds
 
 

@@ -10,6 +10,5 @@ def get_api_service() -> APIService:
     """
     Dependency injection provider returning the singleton APIService instance.
     """
-    service = get_api_service_instance()
-    service.increment_requests()
-    return service
+    return get_api_service_instance()
+
