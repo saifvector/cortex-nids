@@ -101,7 +101,11 @@ class LiveMonitor:
     def _evaluate_flow(self, flow_feats: Dict[str, Any]) -> None:
         """
         Executes ML prediction on a completed flow feature dictionary,
-        persists alerts, and broadcasts WebSocket update.
+        persists alerts to SQLite, and broadcasts WebSocket update.
+
+        Note: metrics_manager is NOT called here because the live monitor runs
+        as a separate process. The API server's MetricsManager re-reads from
+        alerts.db (SQLite) on every get_metrics() call to pick up these alerts.
         """
         try:
             # Extract metadata
@@ -118,21 +122,7 @@ class LiveMonitor:
             # Predict using Module 8 Predictor
             pred_result = self.predictor.predict_single(flow_feats)
 
-            # Record real-time metrics
-            try:
-                from api.metrics_manager import metrics_manager
-                metrics_manager.record_prediction(
-                    attack_type=pred_result.get("Attack_Type", "BENIGN"),
-                    confidence=float(pred_result.get("Prediction_Confidence", 0.99)),
-                    risk_score=float(pred_result.get("Risk_Score", 0.0)),
-                    risk_level=pred_result.get("Risk_Level", "Low"),
-                    latency_ms=float(pred_result.get("Prediction_Time_ms", 0.035)),
-                    count=1
-                )
-            except Exception:
-                pass
-
-            # Store Alert
+            # Store Alert to SQLite (source of truth for metrics)
             alert_event = self.alert_engine.process_prediction(
                 prediction_result=pred_result,
                 src_ip=src_ip,

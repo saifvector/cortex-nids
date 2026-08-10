@@ -1,6 +1,7 @@
 """
 Services module for NIDS FastAPI Backend.
-Integrates Module 8 PredictionService, maintains request metrics, and manages inference execution.
+Integrates Module 8 PredictionService, persists predictions to SQLite via AlertEngine,
+and provides API metrics from the MetricsManager.
 """
 import io
 import logging
@@ -12,6 +13,7 @@ import pandas as pd
 
 from api.exceptions import ModelNotLoadedException, InvalidInputFormatException, BatchProcessingException
 from api.metrics_manager import metrics_manager
+from src.alert_engine import AlertEngine
 from src.prediction_service import PredictionService
 from src.utils.utils import get_absolute_path, load_json
 
@@ -20,12 +22,14 @@ logger = logging.getLogger(__name__)
 
 class APIService:
     """
-    Singleton API Service wrapping Module 8 PredictionService
-    and tracking live request/performance metrics.
+    Singleton API Service wrapping Module 8 PredictionService.
+    All predictions are persisted to alerts.db via AlertEngine so that
+    get_metrics() always reflects reality from the single source of truth (SQLite).
     """
 
     def __init__(self, output_dir: str = "predictions"):
         self.output_dir = get_absolute_path(output_dir)
+        self.alert_engine = AlertEngine(db_dir=self.output_dir)
         try:
             self.prediction_service = PredictionService(output_dir=self.output_dir)
             self.model_loaded = True
@@ -36,16 +40,6 @@ class APIService:
 
     def increment_requests(self) -> None:
         metrics_manager.increment_requests()
-
-    def record_metrics(self, count: int, latency_ms: float, confidence: float) -> None:
-        metrics_manager.record_prediction(
-            attack_type="BENIGN",
-            confidence=confidence,
-            risk_score=0.0,
-            risk_level="Low",
-            latency_ms=latency_ms,
-            count=count
-        )
 
     def get_model_info(self) -> Dict[str, Any]:
         """Returns model metadata and training details."""
@@ -62,20 +56,22 @@ class APIService:
         }
 
     def predict_single_flow(self, flow_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Executes single network flow prediction."""
+        """Executes single network flow prediction and persists to alerts.db."""
         if not self.model_loaded or not self.prediction_service:
             raise ModelNotLoadedException()
 
         try:
             result = self.prediction_service.predictor.predict_single(flow_data)
-            metrics_manager.record_prediction(
-                attack_type=result.get("Attack_Type", "BENIGN"),
-                confidence=float(result.get("Prediction_Confidence", 0.99)),
-                risk_score=float(result.get("Risk_Score", 0.0)),
-                risk_level=result.get("Risk_Level", "Low"),
-                latency_ms=float(result.get("Prediction_Time_ms", 0.035)),
-                count=1
+
+            # Persist to SQLite via AlertEngine (source of truth for metrics)
+            self.alert_engine.process_prediction(
+                prediction_result=result,
+                src_ip=flow_data.get("_src_ip", "API-Client"),
+                dst_ip=flow_data.get("_dst_ip", "API-Server"),
+                protocol=flow_data.get("_protocol", "TCP"),
+                dst_port=int(flow_data.get("Destination Port", 80))
             )
+
             return result
         except Exception as e:
             logger.error("Single prediction error: %s", e)
@@ -99,15 +95,24 @@ class APIService:
             ab = summary.get("attack_breakdown", {})
             rb = summary.get("risk_level_breakdown", {})
 
+            # Persist each attack category to alerts.db
             for atk, cnt in ab.items():
-                metrics_manager.record_prediction(
-                    attack_type=atk,
-                    confidence=im["average_confidence"],
-                    risk_score=im["average_risk_score"],
-                    risk_level="Critical" if atk != "BENIGN" else "Low",
-                    latency_ms=im["average_latency_ms"],
-                    count=cnt
-                )
+                risk_level = "Critical" if atk != "BENIGN" else "Low"
+                for _ in range(cnt):
+                    self.alert_engine.process_prediction(
+                        prediction_result={
+                            "Attack_Type": atk,
+                            "Prediction_Confidence": im["average_confidence"],
+                            "Risk_Score": im["average_risk_score"],
+                            "Risk_Level": risk_level,
+                            "Prediction_Time_ms": im["average_latency_ms"],
+                            "Class_Probabilities": {}
+                        },
+                        src_ip="CSV-Batch",
+                        dst_ip="API-Server",
+                        protocol="TCP",
+                        dst_port=80
+                    )
 
             result_summary = {
                 "total_records_predicted": im["total_records_predicted"],

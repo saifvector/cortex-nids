@@ -41,3 +41,6 @@ AUD-20260810223411-833,2026-08-10 22:34:11,LOGIN,admin,127.0.0.1,authenticate,su
 AUD-20260810223439-986,2026-08-10 22:34:39,LOGIN,admin,127.0.0.1,authenticate,success,"{""role"": ""Administrator""}"
 AUD-20260810223440-4,2026-08-10 22:34:40,LOGIN,invalid_user,127.0.0.1,authenticate,failure,"{""reason"": ""Invalid credentials or inactive account""}"
 AUD-20260810223440-69,2026-08-10 22:34:40,LOGIN,admin,127.0.0.1,authenticate,success,"{""role"": ""Administrator""}"
+AUD-20260810230949-386,2026-08-10 23:09:49,LOGIN,admin,127.0.0.1,authenticate,success,"{""role"": ""Administrator""}"
+AUD-20260810230949-401,2026-08-10 23:09:49,LOGIN,invalid_user,127.0.0.1,authenticate,failure,"{""reason"": ""Invalid credentials or inactive account""}"
+AUD-20260810230949-464,2026-08-10 23:09:49,LOGIN,admin,127.0.0.1,authenticate,success,"{""role"": ""Administrator""}"
