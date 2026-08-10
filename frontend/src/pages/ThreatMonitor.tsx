@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Pause, Play, Filter, ShieldAlert, Zap, Clock, Terminal, Wifi } from 'lucide-react';
+import { Activity, Pause, Play, ShieldAlert, Wifi, RefreshCw } from 'lucide-react';
 import { RiskBadge } from '../components/RiskBadge';
 import { getWebSocketUrl, apiService } from '../services/api';
 
@@ -16,32 +16,48 @@ interface LiveFlowEvent {
   latencyMs: number;
 }
 
-const INITIAL_EVENTS: LiveFlowEvent[] = [
-  { id: 'EVT-1001', timestamp: '13:02:10', attack: 'BENIGN', confidence: 0.9991, riskScore: 0, riskLevel: 'Low', srcIp: '192.168.1.105', destPort: 443, latencyMs: 0.024 },
-  { id: 'EVT-1002', timestamp: '13:02:08', attack: 'DoS Hulk', confidence: 0.9965, riskScore: 79.8, riskLevel: 'Critical', srcIp: '172.16.0.12', destPort: 80, latencyMs: 0.029 },
-  { id: 'EVT-1003', timestamp: '13:02:05', attack: 'BENIGN', confidence: 0.9988, riskScore: 0, riskLevel: 'Low', srcIp: '192.168.1.140', destPort: 80, latencyMs: 0.021 },
-  { id: 'EVT-1004', timestamp: '13:02:02', attack: 'PortScan', confidence: 0.9972, riskScore: 49.9, riskLevel: 'Medium', srcIp: '10.0.0.45', destPort: 22, latencyMs: 0.027 },
-  { id: 'EVT-1005', timestamp: '13:01:59', attack: 'DDoS', confidence: 0.9994, riskScore: 89.9, riskLevel: 'Critical', srcIp: '172.16.0.88', destPort: 80, latencyMs: 0.031 },
-];
-
-const ATTACK_POOL = [
-  { attack: 'BENIGN', level: 'Low', score: 0 },
-  { attack: 'BENIGN', level: 'Low', score: 0 },
-  { attack: 'BENIGN', level: 'Low', score: 0 },
-  { attack: 'DoS Hulk', level: 'Critical', score: 79.8 },
-  { attack: 'DDoS', level: 'Critical', score: 89.9 },
-  { attack: 'PortScan', level: 'Medium', score: 49.9 },
-  { attack: 'Bot', level: 'High', score: 72.5 },
-];
-
 export const ThreatMonitor: React.FC = () => {
-  const [events, setEvents] = useState<LiveFlowEvent[]>(INITIAL_EVENTS);
+  const [events, setEvents] = useState<LiveFlowEvent[]>([]);
   const [isLive, setIsLive] = useState<boolean>(true);
   const [wsConnected, setWsConnected] = useState<boolean>(false);
   const [filterLevel, setFilterLevel] = useState<string>('All');
   const [selectedEvent, setSelectedEvent] = useState<LiveFlowEvent | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // WebSocket Connection Effect
+  // Map API alert object to UI LiveFlowEvent
+  const mapApiAlertToEvent = (data: any): LiveFlowEvent => ({
+    id: data.id || `ALT-${Date.now()}`,
+    timestamp: data.timestamp || new Date().toLocaleTimeString(),
+    attack: data.attack_type || 'BENIGN',
+    confidence: typeof data.confidence === 'number' ? data.confidence : 0.99,
+    riskScore: typeof data.risk_score === 'number' ? data.risk_score : 0,
+    riskLevel: data.risk_level || 'Low',
+    srcIp: data.src_ip || '192.168.1.1',
+    destPort: data.dst_port || 80,
+    latencyMs: typeof data.prediction_time_ms === 'number' ? Math.round(data.prediction_time_ms * 1000) / 1000 : 0.035,
+  });
+
+  // Fetch initial alerts from SQLite alerts.db via REST API
+  const fetchInitialAlerts = async () => {
+    try {
+      const data = await apiService.getAlerts({ limit: 50 });
+      if (Array.isArray(data)) {
+        const mapped = data.map(mapApiAlertToEvent);
+        setEvents(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch alerts from database:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchInitialAlerts();
+  }, []);
+
+  // WebSocket Live Streaming & Fallback REST Polling Effect
   useEffect(() => {
     if (!isLive) return;
 
@@ -57,18 +73,12 @@ export const ThreatMonitor: React.FC = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          const newEvt: LiveFlowEvent = {
-            id: data.id || `EVT-${Math.floor(1000 + Math.random() * 9000)}`,
-            timestamp: data.timestamp || new Date().toLocaleTimeString(),
-            attack: data.attack_type || 'BENIGN',
-            confidence: data.confidence || 0.995,
-            riskScore: data.risk_score || 0,
-            riskLevel: data.risk_level || 'Low',
-            srcIp: data.src_ip || '192.168.1.1',
-            destPort: data.dst_port || 80,
-            latencyMs: data.prediction_time_ms || 0.027,
-          };
-          setEvents((prev) => [newEvt, ...prev.slice(0, 49)]);
+          const newEvt = mapApiAlertToEvent(data);
+          setEvents((prev) => {
+            // Prevent duplicates if already present
+            if (prev.some((e) => e.id === newEvt.id)) return prev;
+            return [newEvt, ...prev.slice(0, 49)];
+          });
         } catch (e) {
           console.error('Error parsing WebSocket alert event:', e);
         }
@@ -85,34 +95,30 @@ export const ThreatMonitor: React.FC = () => {
       setWsConnected(false);
     }
 
-    // Fallback simulation timer if WS is disconnected
-    const fallbackTimer = setInterval(() => {
-      if (!wsConnected) {
-        const randomItem = ATTACK_POOL[Math.floor(Math.random() * ATTACK_POOL.length)];
-        const newEvent: LiveFlowEvent = {
-          id: `EVT-${Math.floor(1000 + Math.random() * 9000)}`,
-          timestamp: new Date().toLocaleTimeString(),
-          attack: randomItem.attack,
-          confidence: 0.99 + Math.random() * 0.009,
-          riskScore: randomItem.score,
-          riskLevel: randomItem.level as any,
-          srcIp: `192.168.${Math.floor(Math.random() * 5)}.${Math.floor(Math.random() * 255)}`,
-          destPort: [80, 443, 22, 8080, 53][Math.floor(Math.random() * 5)],
-          latencyMs: floatFix(0.02 + Math.random() * 0.015),
-        };
-        setEvents((prev) => [newEvent, ...prev.slice(0, 49)]);
+    // 3-second REST polling fallback to ensure real alerts from alerts.db always render
+    const pollInterval = setInterval(async () => {
+      try {
+        const data = await apiService.getAlerts({ limit: 50 });
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map(mapApiAlertToEvent);
+          setEvents((prev) => {
+            // Merge new alerts based on ID
+            const existingIds = new Set(prev.map((e) => e.id));
+            const newOnly = mapped.filter((e) => !existingIds.has(e.id));
+            if (newOnly.length === 0) return prev;
+            return [...newOnly, ...prev].slice(0, 50);
+          });
+        }
+      } catch (e) {
+        console.error('Polling alerts error:', e);
       }
-    }, 2500);
+    }, 3000);
 
     return () => {
       if (ws) ws.close();
-      clearInterval(fallbackTimer);
+      clearInterval(pollInterval);
     };
-  }, [isLive, wsConnected]);
-
-  function floatFix(val: number) {
-    return Math.round(val * 1000) / 1000;
-  }
+  }, [isLive]);
 
   const filteredEvents = events.filter((e) => filterLevel === 'All' || e.riskLevel === filterLevel);
 
@@ -164,63 +170,76 @@ export const ThreatMonitor: React.FC = () => {
       {/* Main Stream Table */}
       <div className="liquid-glass-card p-6 rounded-2xl">
         <div className="flex items-center justify-between mb-3 text-xs font-mono">
-          <span className="text-slate-400">FEED METRICS: {filteredEvents.length} Active Events Displayed</span>
+          <span className="text-slate-400">
+            FEED METRICS: {filteredEvents.length} Stored & Live Events Displayed
+          </span>
           <span className="text-emerald-400 flex items-center gap-1.5 font-bold">
             <Wifi className="w-3.5 h-3.5 text-cyan-400" />
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            {wsConnected ? 'WEBSOCKET CONNECTED' : 'LIVE STREAMING'}
+            {wsConnected ? 'WEBSOCKET CONNECTED' : 'LIVE DB STREAMING'}
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono text-slate-300">
-            <thead className="bg-white/[0.02] text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/10">
-              <tr>
-                <th className="p-3">Event ID</th>
-                <th className="p-3">Timestamp</th>
-                <th className="p-3">Source IP</th>
-                <th className="p-3">Dest Port</th>
-                <th className="p-3">Predicted Attack</th>
-                <th className="p-3">Confidence</th>
-                <th className="p-3">Risk Level</th>
-                <th className="p-3">Latency</th>
-                <th className="p-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              <AnimatePresence initial={false}>
-                {filteredEvents.map((evt) => (
-                  <motion.tr
-                    key={evt.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="hover:bg-white/[0.04] transition-colors"
-                  >
-                    <td className="p-3 text-slate-400 font-semibold">{evt.id}</td>
-                    <td className="p-3 text-slate-400">{evt.timestamp}</td>
-                    <td className="p-3 text-slate-300">{evt.srcIp}</td>
-                    <td className="p-3 text-slate-400">{evt.destPort}</td>
-                    <td className="p-3 font-bold text-white">{evt.attack}</td>
-                    <td className="p-3 text-emerald-400">{(evt.confidence * 100).toFixed(2)}%</td>
-                    <td className="p-3">
-                      <RiskBadge level={evt.riskLevel} score={evt.riskScore} />
-                    </td>
-                    <td className="p-3 text-cyan-400">{evt.latencyMs} ms</td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={() => setSelectedEvent(evt)}
-                        className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 text-[11px]"
-                      >
-                        Inspect
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
-            </tbody>
-          </table>
+          {loading ? (
+            <div className="p-8 text-center text-slate-400 text-xs font-mono flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+              Loading real threat events from SQLite alerts.db...
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs font-mono">
+              No threat alerts found in database. Run <code className="text-cyan-400">python scripts/run_live_monitor.py</code> to capture live traffic.
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs font-mono text-slate-300">
+              <thead className="bg-white/[0.02] text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+                <tr>
+                  <th className="p-3">Event ID</th>
+                  <th className="p-3">Timestamp</th>
+                  <th className="p-3">Source IP</th>
+                  <th className="p-3">Dest Port</th>
+                  <th className="p-3">Predicted Attack</th>
+                  <th className="p-3">Confidence</th>
+                  <th className="p-3">Risk Level</th>
+                  <th className="p-3">Latency</th>
+                  <th className="p-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                <AnimatePresence initial={false}>
+                  {filteredEvents.map((evt) => (
+                    <motion.tr
+                      key={evt.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="hover:bg-white/[0.04] transition-colors"
+                    >
+                      <td className="p-3 text-slate-400 font-semibold">{evt.id}</td>
+                      <td className="p-3 text-slate-400">{evt.timestamp}</td>
+                      <td className="p-3 text-slate-300">{evt.srcIp}</td>
+                      <td className="p-3 text-slate-400">{evt.destPort}</td>
+                      <td className="p-3 font-bold text-white">{evt.attack}</td>
+                      <td className="p-3 text-emerald-400">{(evt.confidence * 100).toFixed(2)}%</td>
+                      <td className="p-3">
+                        <RiskBadge level={evt.riskLevel} score={evt.riskScore} />
+                      </td>
+                      <td className="p-3 text-cyan-400">{evt.latencyMs} ms</td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => setSelectedEvent(evt)}
+                          className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 text-[11px]"
+                        >
+                          Inspect
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

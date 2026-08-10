@@ -11,7 +11,7 @@
         "total_records_predicted": 2,
         "average_confidence": 1.0,
         "average_risk_score": 80.0,
-        "average_latency_ms": 7.778
+        "average_latency_ms": 8.913
     },
     "attack_breakdown": {
         "DoS GoldenEye": 2

@@ -3,6 +3,7 @@ Routes module for NIDS FastAPI Backend.
 Defines API endpoints for root info, health check, model info, single flow prediction,
 batch CSV upload prediction, metrics, feature importances, live alerts, WebSockets, SIEM, Threat Intelligence, SOAR Mitigation, Auth, and Audit Logs.
 """
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -326,11 +327,24 @@ async def delete_user(username: str) -> Dict[str, Any]:
 
 @router.websocket("/ws/alerts")
 async def websocket_alerts_endpoint(websocket: WebSocket):
-    """WebSocket endpoint streaming live real-time threat predictions and alerts."""
+    """
+    WebSocket endpoint streaming live real-time threat predictions and alerts.
+    Polls SQLite alerts.db every 1.0 second for newly inserted alerts (from live monitor or API)
+    and broadcasts them to the connected frontend client.
+    """
     await ws_manager.connect(websocket)
+    # Start tracking from current max rowid so client receives new live events
+    last_rowid = alert_engine.get_max_rowid()
     try:
         while True:
-            # Keep connection open for incoming messages
-            data = await websocket.receive_text()
+            await asyncio.sleep(1.0)
+            new_alerts, max_rowid = alert_engine.get_alerts_after_rowid(last_rowid=last_rowid, limit=50)
+            if new_alerts:
+                last_rowid = max_rowid
+                for alt in new_alerts:
+                    await websocket.send_json(alt)
     except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception as e:
+        logger.warning("WebSocket streaming error: %s", e)
         ws_manager.disconnect(websocket)

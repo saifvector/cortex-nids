@@ -70,7 +70,7 @@ export const Dashboard: React.FC = () => {
   const threatScore = Math.min(100, Math.max(0, (attackPreds / totalPreds) * 100 * 5)).toFixed(1);
 
   // Dynamic Recent Detections List
-  const recentDetections = alerts.length > 0 ? alerts.map((alt) => ({
+  const recentDetections = alerts.map((alt) => ({
     id: alt.id || 'ALT-FLOW',
     timestamp: alt.timestamp?.split(' ')[1] || alt.timestamp || 'Just now',
     attack: alt.attack_type || 'BENIGN',
@@ -78,9 +78,7 @@ export const Dashboard: React.FC = () => {
     score: alt.risk_score || 0,
     level: alt.risk_level || 'Low',
     latency: `${alt.prediction_time_ms || 0.035} ms`
-  })) : [
-    { id: 'FLOW-9012', timestamp: '12:54:10', attack: 'BENIGN', confidence: 0.9985, score: 0, level: 'Low', latency: '0.035 ms' }
-  ];
+  }));
 
   // Threat Timeline Area Data
   const timelineData = [

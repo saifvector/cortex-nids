@@ -141,6 +141,40 @@ class AlertEngine:
         except Exception as e:
             logger.error("Failed appending alert to CSV: %s", e)
 
+    def get_max_rowid(self) -> int:
+        """Returns the current maximum rowid in alerts table."""
+        try:
+            with sqlite3.connect(str(self.sqlite_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COALESCE(MAX(rowid), 0) FROM alerts")
+                row = cursor.fetchone()
+                return int(row[0]) if row else 0
+        except Exception as e:
+            logger.error("get_max_rowid error: %s", e)
+            return 0
+
+    def get_alerts_after_rowid(self, last_rowid: int = 0, limit: int = 50) -> Tuple[List[Dict[str, Any]], int]:
+        """Fetches stored alerts inserted after last_rowid, returning (alerts_list, max_new_rowid)."""
+        query = "SELECT rowid, * FROM alerts WHERE rowid > ? ORDER BY rowid ASC LIMIT ?"
+        results = []
+        max_rowid = last_rowid
+        try:
+            with sqlite3.connect(str(self.sqlite_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(query, (last_rowid, limit))
+                rows = cursor.fetchall()
+                for r in rows:
+                    r_dict = dict(r)
+                    cur_rowid = r_dict.pop("rowid")
+                    if cur_rowid > max_rowid:
+                        max_rowid = cur_rowid
+                    results.append(r_dict)
+        except Exception as e:
+            logger.error("get_alerts_after_rowid error: %s", e)
+
+        return results, max_rowid
+
     def query_alerts(
         self,
         protocol: Optional[str] = None,
