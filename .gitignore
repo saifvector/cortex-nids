@@ -146,6 +146,12 @@ models/*
 !models/best_model.joblib
 !models/feature_names.json
 
+# Node.js dependencies & builds
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
 # System files
 .DS_Store
 Thumbs.db
