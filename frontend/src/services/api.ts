@@ -111,4 +111,43 @@ export const apiService = {
     const res = await apiClient.get<Record<string, number>>('/analytics/severity');
     return res.data;
   },
+
+  // GET /historical-threats
+  getHistoricalThreats: async (params?: Record<string, any>): Promise<any> => {
+    const res = await apiClient.get<any>('/historical-threats', { params });
+    return res.data;
+  },
+
+  // GET /historical-threats/search
+  searchHistoricalThreats: async (query: string, page = 1, pageSize = 20): Promise<any> => {
+    const res = await apiClient.get<any>('/historical-threats/search', {
+      params: { q: query, page, page_size: pageSize },
+    });
+    return res.data;
+  },
+
+  // Export URLs
+  getExportHistoricalCsvUrl: (params?: Record<string, any>): string => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.keys(params).forEach((key) => {
+        if (params[key] !== undefined && params[key] !== null) {
+          searchParams.append(key, String(params[key]));
+        }
+      });
+    }
+    return `${API_BASE_URL}/historical-threats/export/csv?${searchParams.toString()}`;
+  },
+
+  getExportHistoricalJsonUrl: (params?: Record<string, any>): string => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.keys(params).forEach((key) => {
+        if (params[key] !== undefined && params[key] !== null) {
+          searchParams.append(key, String(params[key]));
+        }
+      });
+    }
+    return `${API_BASE_URL}/historical-threats/export/json?${searchParams.toString()}`;
+  },
 };

@@ -3,11 +3,11 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './pages/Dashboard';
-import { ThreatMonitor } from './pages/ThreatMonitor';
+import { LiveThreats } from './pages/LiveThreats';
+import { HistoricalThreats } from './pages/HistoricalThreats';
 import { HistoricalAnalytics } from './pages/HistoricalAnalytics';
 import { Prediction } from './pages/Prediction';
 import { BatchAnalysis } from './pages/BatchAnalysis';
-import { Analytics } from './pages/Analytics';
 import { FeatureImportance } from './pages/FeatureImportance';
 import { ModelInsights } from './pages/ModelInsights';
 import { Reports } from './pages/Reports';
@@ -36,7 +36,9 @@ export const App: React.FC = () => {
             <main className="flex-1 p-6 md:p-8 overflow-y-auto">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/monitor" element={<ThreatMonitor />} />
+                <Route path="/live-threats" element={<LiveThreats />} />
+                <Route path="/monitor" element={<LiveThreats />} />
+                <Route path="/historical-threats" element={<HistoricalThreats />} />
                 <Route path="/analytics" element={<HistoricalAnalytics />} />
                 <Route path="/historical" element={<HistoricalAnalytics />} />
                 <Route path="/predict" element={<Prediction />} />

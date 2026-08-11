@@ -7,7 +7,7 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Response, UploadFile, WebSocket, WebSocketDisconnect, status
 
 from api.dependencies import get_api_service
 from api.schemas import (
@@ -145,6 +145,84 @@ async def reset_session_metrics() -> Dict[str, str]:
     from api.session_metrics import session_metrics_manager
     session_metrics_manager.reset()
     return {"status": "reset", "message": "Session metrics reset to zero"}
+
+
+# ==========================================
+# HISTORICAL THREAT ARCHIVE ENDPOINTS (alerts.db)
+# ==========================================
+
+@router.get("/historical-threats", summary="Get Paginated Permanent Historical Threat Archive", tags=["Historical Threats"])
+async def get_historical_threats(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=500),
+    time_range: str = Query("all", description="Time filter: 24h, 7d, 30d, all"),
+    attack_type: Optional[str] = Query(None),
+    risk_level: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None)
+) -> Dict[str, Any]:
+    """Returns paginated, searchable, and filterable threat alerts directly from alerts.db."""
+    return alert_engine.query_historical_threats_paginated(
+        page=page,
+        page_size=page_size,
+        time_range=time_range,
+        attack_type=attack_type,
+        risk_level=risk_level,
+        search=search,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+
+@router.get("/historical-threats/search", summary="Search Historical Threats", tags=["Historical Threats"])
+async def search_historical_threats(
+    q: str = Query(..., min_length=1),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100)
+) -> Dict[str, Any]:
+    """Searches historical threats by IP, alert ID, or attack category."""
+    return alert_engine.query_historical_threats_paginated(
+        page=page,
+        page_size=page_size,
+        search=q
+    )
+
+
+@router.get("/historical-threats/export/csv", summary="Export Historical Threat Alerts as CSV", tags=["Historical Threats"])
+async def export_historical_threats_csv(
+    time_range: str = Query("all"),
+    attack_type: Optional[str] = Query(None),
+    risk_level: Optional[str] = Query(None),
+    search: Optional[str] = Query(None)
+):
+    """Exports matching historical alerts from alerts.db as a downloadable CSV file."""
+    csv_content = alert_engine.export_alerts_csv_string(
+        time_range=time_range,
+        attack_type=attack_type,
+        risk_level=risk_level,
+        search=search
+    )
+    headers = {"Content-Disposition": "attachment; filename=historical_threat_alerts.csv"}
+    return Response(content=csv_content, media_type="text/csv", headers=headers)
+
+
+@router.get("/historical-threats/export/json", summary="Export Historical Threat Alerts as JSON", tags=["Historical Threats"])
+async def export_historical_threats_json(
+    time_range: str = Query("all"),
+    attack_type: Optional[str] = Query(None),
+    risk_level: Optional[str] = Query(None),
+    search: Optional[str] = Query(None)
+):
+    """Exports matching historical alerts from alerts.db as a downloadable JSON file."""
+    json_content = alert_engine.export_alerts_json_string(
+        time_range=time_range,
+        attack_type=attack_type,
+        risk_level=risk_level,
+        search=search
+    )
+    headers = {"Content-Disposition": "attachment; filename=historical_threat_alerts.json"}
+    return Response(content=json_content, media_type="application/json", headers=headers)
 
 
 # ==========================================

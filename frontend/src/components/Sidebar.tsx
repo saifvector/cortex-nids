@@ -12,13 +12,15 @@ import {
   FileText,
   Settings,
   Shield,
-  Sparkles
+  Sparkles,
+  Database
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/', label: 'Dashboard (Live)', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { to: '/monitor', label: 'Threat Monitor', icon: <Activity className="w-4 h-4" /> },
+    { to: '/live-threats', label: 'Live Threats', icon: <Activity className="w-4 h-4" /> },
+    { to: '/historical-threats', label: 'Historical Threats', icon: <Database className="w-4 h-4" /> },
     { to: '/analytics', label: 'Historical Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { to: '/predict', label: 'Single Prediction', icon: <ShieldAlert className="w-4 h-4" /> },
     { to: '/batch', label: 'Batch Analysis', icon: <UploadCloud className="w-4 h-4" /> },

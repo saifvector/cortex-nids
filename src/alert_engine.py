@@ -223,6 +223,113 @@ class AlertEngine:
 
         return results
 
+    def query_historical_threats_paginated(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        time_range: str = "all",
+        attack_type: Optional[str] = None,
+        risk_level: Optional[str] = None,
+        search: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Queries permanent historical threat alerts from alerts.db with pagination, search, and filtering.
+        """
+        import math
+        where_clauses = ["1=1"]
+        params = []
+
+        if time_range == "24h":
+            where_clauses.append("timestamp >= datetime('now', '-1 day')")
+        elif time_range == "7d":
+            where_clauses.append("timestamp >= datetime('now', '-7 days')")
+        elif time_range == "30d":
+            where_clauses.append("timestamp >= datetime('now', '-30 days')")
+        elif start_date and end_date:
+            where_clauses.append("timestamp BETWEEN ? AND ?")
+            params.extend([start_date, end_date])
+
+        if attack_type and attack_type != "All":
+            where_clauses.append("attack_type = ?")
+            params.append(attack_type)
+
+        if risk_level and risk_level != "All":
+            where_clauses.append("risk_level = ?")
+            params.append(risk_level)
+
+        if search:
+            search_pattern = f"%{search}%"
+            where_clauses.append("(id LIKE ? OR src_ip LIKE ? OR dst_ip LIKE ? OR attack_type LIKE ?)")
+            params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
+
+        where_sql = " AND ".join(where_clauses)
+        count_sql = f"SELECT COUNT(*) FROM alerts WHERE {where_sql}"
+        
+        offset = (page - 1) * page_size
+        data_sql = f"SELECT * FROM alerts WHERE {where_sql} ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+        data_params = params + [page_size, offset]
+
+        total = 0
+        results = []
+        try:
+            with sqlite3.connect(str(self.sqlite_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(count_sql, params)
+                c_row = cursor.fetchone()
+                total = int(c_row[0]) if c_row else 0
+
+                cursor.execute(data_sql, data_params)
+                for r in cursor.fetchall():
+                    results.append(dict(r))
+        except Exception as e:
+            logger.error("Error querying historical threats paginated: %s", e)
+
+        total_pages = max(1, math.ceil(total / page_size)) if total > 0 else 1
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "alerts": results
+        }
+
+    def export_alerts_csv_string(
+        self,
+        time_range: str = "all",
+        attack_type: Optional[str] = None,
+        risk_level: Optional[str] = None,
+        search: Optional[str] = None
+    ) -> str:
+        """Exports filtered alerts from alerts.db as CSV string."""
+        res = self.query_historical_threats_paginated(
+            page=1, page_size=100000, time_range=time_range,
+            attack_type=attack_type, risk_level=risk_level, search=search
+        )
+        alerts = res.get("alerts", [])
+        if not alerts:
+            return "id,timestamp,attack_type,confidence,risk_score,risk_level,src_ip,dst_ip,protocol,dst_port,prediction_time_ms\n"
+        df = pd.DataFrame(alerts)
+        if "class_probabilities" in df.columns:
+            df = df.drop(columns=["class_probabilities"])
+        return df.to_csv(index=False)
+
+    def export_alerts_json_string(
+        self,
+        time_range: str = "all",
+        attack_type: Optional[str] = None,
+        risk_level: Optional[str] = None,
+        search: Optional[str] = None
+    ) -> str:
+        """Exports filtered alerts from alerts.db as formatted JSON string."""
+        res = self.query_historical_threats_paginated(
+            page=1, page_size=100000, time_range=time_range,
+            attack_type=attack_type, risk_level=risk_level, search=search
+        )
+        return json.dumps(res.get("alerts", []), indent=2)
+
     def generate_daily_report(self) -> Dict[str, Any]:
         """
         Generates a summary report of daily threat statistics.
