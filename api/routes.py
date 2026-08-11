@@ -200,6 +200,19 @@ async def download_markdown_report():
 
 
 # ==========================================
+# GLOBAL SYSTEM SEARCH ENDPOINT
+# ==========================================
+
+@router.get("/search", summary="Global Multi-Entity System Search", tags=["Search Engine"])
+async def global_system_search(
+    q: str = Query(..., min_length=1, description="Search query string"),
+    limit: int = Query(10, ge=1, le=50)
+) -> Dict[str, Any]:
+    """Performs real-time search across alerts.db threat records and application system modules."""
+    return alert_engine.global_search(q=q, limit=limit)
+
+
+# ==========================================
 # HISTORICAL THREAT ARCHIVE ENDPOINTS (alerts.db)
 # ==========================================
 

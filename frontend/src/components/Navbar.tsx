@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Search, RefreshCw, CheckCircle2, AlertCircle, Clock, Bell, Zap } from 'lucide-react';
+import { Search, RefreshCw, CheckCircle2, AlertCircle, Clock, Bell } from 'lucide-react';
 import { apiService } from '../services/api';
 import { HealthResponse } from '../types/api';
 import { notificationStore, SOCNotification } from '../services/notificationStore';
 import { NotificationDrawer } from './NotificationDrawer';
+import { GlobalSearchModal } from './GlobalSearchModal';
 
 export const Navbar: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -13,6 +14,9 @@ export const Navbar: React.FC = () => {
   // Notifications State
   const [notifications, setNotifications] = useState<SOCNotification[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
+
+  // Global Search Modal State
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
 
   const checkHealth = async () => {
     try {
@@ -49,10 +53,20 @@ export const Navbar: React.FC = () => {
     const healthInterval = setInterval(checkHealth, 30000);
     const clockInterval = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
 
+    // Global Hotkey Listener for ⌘K / Ctrl+K
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       unsubscribe();
       clearInterval(healthInterval);
       clearInterval(clockInterval);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -60,14 +74,19 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="h-16 px-6 pt-4 pb-2 sticky top-0 z-20 flex items-center justify-between">
-      {/* Search Input */}
+      {/* Search Input Button */}
       <div className="flex items-center space-x-3 w-80">
-        <div className="relative w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+        <div
+          onClick={() => setIsSearchOpen(true)}
+          className="relative w-full cursor-pointer group"
+        >
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 group-hover:text-blue-400 transition-colors" />
           <input
+            readOnly
             type="text"
             placeholder="Search IP, flow hash, or rule... (⌘K)"
-            className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all backdrop-blur-md"
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 group-hover:border-blue-500/50 cursor-pointer focus:outline-none transition-all backdrop-blur-md"
           />
         </div>
       </div>
@@ -129,6 +148,12 @@ export const Navbar: React.FC = () => {
         isOpen={isNotifOpen}
         onClose={() => setIsNotifOpen(false)}
         notifications={notifications}
+      />
+
+      {/* Global System Search Modal */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
       />
     </header>
   );

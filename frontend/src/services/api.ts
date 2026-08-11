@@ -161,4 +161,10 @@ export const apiService = {
   getReportHtmlUrl: (): string => `${API_BASE_URL}/reports/download/html`,
   getReportCsvUrl: (): string => `${API_BASE_URL}/reports/download/csv`,
   getReportMarkdownUrl: (): string => `${API_BASE_URL}/reports/download/markdown`,
+
+  // GET /search
+  globalSearch: async (query: string, limit = 10): Promise<any> => {
+    const res = await apiClient.get<any>('/search', { params: { q: query, limit } });
+    return res.data;
+  },
 };

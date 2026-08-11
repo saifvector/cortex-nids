@@ -330,6 +330,40 @@ class AlertEngine:
         )
         return json.dumps(res.get("alerts", []), indent=2)
 
+    def global_search(self, q: str, limit: int = 10) -> Dict[str, Any]:
+        """
+        Executes a global multi-entity search across alerts.db and system modules.
+        """
+        search_results = self.query_historical_threats_paginated(
+            page=1, page_size=limit, search=q
+        )
+
+        all_modules = [
+            {"name": "Dashboard (Live)", "path": "/", "category": "Navigation", "description": "Active session telemetry & live metrics"},
+            {"name": "Live Threats", "path": "/live-threats", "category": "Navigation", "description": "Real-time WebSocket session alert stream"},
+            {"name": "Historical Threats", "path": "/historical-threats", "category": "Navigation", "description": "Permanent threat archive in alerts.db"},
+            {"name": "Historical Analytics", "path": "/analytics", "category": "Navigation", "description": "Long-term threat trends & intelligence"},
+            {"name": "Single Prediction", "path": "/predict", "category": "Tool", "description": "Single flow ML threat inference sandbox"},
+            {"name": "Batch Analysis", "path": "/batch", "category": "Tool", "description": "CSV batch network traffic processing"},
+            {"name": "Feature Importance", "path": "/features", "category": "Intelligence", "description": "XAI Feature importance rankings"},
+            {"name": "Model Insights", "path": "/model", "category": "Intelligence", "description": "Model architecture & performance metrics"},
+            {"name": "Reports Center", "path": "/reports", "category": "Export", "description": "PDF, HTML, CSV, and Markdown audit reports"},
+            {"name": "Settings", "path": "/settings", "category": "System", "description": "Platform parameters & threshold controls"},
+        ]
+
+        q_lower = q.lower().strip()
+        matched_modules = [
+            m for m in all_modules
+            if q_lower in m["name"].lower() or q_lower in m["description"].lower() or q_lower in m["category"].lower()
+        ]
+
+        return {
+            "query": q,
+            "alerts": search_results.get("alerts", []),
+            "total_alerts": search_results.get("total", 0),
+            "modules": matched_modules,
+        }
+
     def generate_daily_report(self) -> Dict[str, Any]:
         """
         Generates a summary report of daily threat statistics.
