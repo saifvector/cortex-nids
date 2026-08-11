@@ -97,10 +97,19 @@ class InferencePipeline:
 
         # Check if pipeline requires transformation or features are already aligned
         try:
-            if hasattr(self.pipeline, "transform"):
+            if isinstance(self.pipeline, dict):
+                if "scaler" in self.pipeline and hasattr(self.pipeline["scaler"], "transform"):
+                    logger.debug("Applying dictionary scaler transform...")
+                    X_proc = self.pipeline["scaler"].transform(validated_df)
+                elif "transform" in self.pipeline and callable(self.pipeline["transform"]):
+                    X_proc = self.pipeline["transform"](validated_df)
+                else:
+                    X_proc = validated_df
+            elif hasattr(self.pipeline, "transform"):
                 logger.debug("Applying preprocessing pipeline transform...")
                 X_proc = self.pipeline.transform(validated_df)
             elif hasattr(self.pipeline, "scaler") and hasattr(self.pipeline.scaler, "transform"):
+                logger.debug("Applying attribute scaler transform...")
                 X_proc = self.pipeline.scaler.transform(validated_df)
             else:
                 X_proc = validated_df

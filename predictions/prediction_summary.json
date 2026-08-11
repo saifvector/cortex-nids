@@ -9,14 +9,14 @@
     },
     "inference_metrics": {
         "total_records_predicted": 2,
-        "average_confidence": 1.0,
-        "average_risk_score": 80.0,
-        "average_latency_ms": 8.005
+        "average_confidence": 0.9895,
+        "average_risk_score": 0.21,
+        "average_latency_ms": 9.902
     },
     "attack_breakdown": {
-        "DoS GoldenEye": 2
+        "BENIGN": 2
     },
     "risk_level_breakdown": {
-        "Critical": 2
+        "Low": 2
     }
 }
