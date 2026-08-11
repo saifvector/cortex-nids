@@ -3,9 +3,10 @@
 API Server runner script for NIDS.
 Launches Uvicorn ASGI server serving the FastAPI backend.
 """
-import sys
 import argparse
 import logging
+import os
+import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -26,19 +27,21 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000)")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
 
-    import os
+    args = parser.parse_args()
+
     port = int(os.environ.get("PORT", args.port))
+    host = os.environ.get("HOST", args.host)
 
     logging.info("=" * 60)
     logging.info("Starting NIDS Production FastAPI Backend Server")
-    logging.info("Binding to %s:%d", args.host, port)
+    logging.info("Binding to %s:%d", host, port)
     logging.info("Swagger Documentation: http://localhost:%d/docs", port)
     logging.info("ReDoc Documentation:   http://localhost:%d/redoc", port)
     logging.info("=" * 60)
 
     uvicorn.run(
         "api.main:app",
-        host=args.host,
+        host=host,
         port=port,
         reload=args.reload,
         log_level="info"
