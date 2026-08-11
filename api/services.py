@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
 from api.exceptions import ModelNotLoadedException, InvalidInputFormatException, BatchProcessingException
@@ -151,39 +152,54 @@ class APIService:
         return session_metrics_manager.get_metrics()
 
     def get_feature_importance(self) -> Dict[str, Any]:
-        """Returns top feature importances."""
+        """Returns live, normalized feature importances directly from the loaded ML model object."""
         if not self.model_loaded or not self.prediction_service:
             raise ModelNotLoadedException()
 
         model_name = self.prediction_service.model_name
         feature_names = self.prediction_service.feature_names
+        pipeline = getattr(self.prediction_service.predictor, "pipeline", None)
+        model = getattr(pipeline, "model", None) if pipeline else None
 
-        fi_path = get_absolute_path("reports/explainability/feature_importance.csv")
         top_features = []
 
-        if fi_path.exists():
-            try:
-                fi_df = pd.read_csv(fi_path)
-                model_fi = fi_df[fi_df["Model"] == model_name].head(20)
-                if model_fi.empty:
-                    model_fi = fi_df.head(20)
+        if model is not None and hasattr(model, "feature_importances_"):
+            raw_fi = np.array(model.feature_importances_, dtype=float)
+            total_sum = np.sum(raw_fi)
+            norm_fi = (raw_fi / total_sum) if total_sum > 0 else np.ones_like(raw_fi) / max(1, len(raw_fi))
 
-                for idx, row in model_fi.reset_index().iterrows():
-                    top_features.append({
-                        "rank": idx + 1,
-                        "feature": str(row["Feature"]),
-                        "importance": float(round(row.get("Normalized_Importance", 0.05), 4))
-                    })
-            except Exception as e:
-                logger.warning("Could not read feature_importance.csv: %s", e)
+            # Pair with expected feature names (up to length of raw_fi)
+            n_feats = min(len(feature_names), len(norm_fi))
+            paired = sorted(
+                zip(feature_names[:n_feats], norm_fi[:n_feats]),
+                key=lambda x: x[1],
+                reverse=True
+            )
 
-        if not top_features:
-            for idx, feat in enumerate(feature_names[:20]):
+            for idx, (feat, imp) in enumerate(paired[:20]):
                 top_features.append({
                     "rank": idx + 1,
                     "feature": feat,
-                    "importance": float(round(1.0 / (idx + 1), 4))
+                    "importance": float(round(imp, 4))
                 })
+
+        if not top_features:
+            fi_path = get_absolute_path("reports/explainability/feature_importance.csv")
+            if fi_path.exists():
+                try:
+                    fi_df = pd.read_csv(fi_path)
+                    model_fi = fi_df[fi_df["Model"] == model_name].head(20)
+                    if model_fi.empty:
+                        model_fi = fi_df.head(20)
+
+                    for idx, row in model_fi.reset_index().iterrows():
+                        top_features.append({
+                            "rank": idx + 1,
+                            "feature": str(row["Feature"]),
+                            "importance": float(round(row.get("Normalized_Importance", 0.05), 4))
+                        })
+                except Exception as e:
+                    logger.warning("Could not read feature_importance.csv: %s", e)
 
         return {
             "model_name": model_name,
