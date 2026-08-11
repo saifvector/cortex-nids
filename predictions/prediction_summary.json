@@ -11,7 +11,7 @@
         "total_records_predicted": 2,
         "average_confidence": 0.9895,
         "average_risk_score": 0.21,
-        "average_latency_ms": 9.902
+        "average_latency_ms": 9.757
     },
     "attack_breakdown": {
         "BENIGN": 2

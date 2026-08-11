@@ -41,6 +41,8 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
+from fastapi.staticfiles import StaticFiles
+
 # Setup middleware (CORS, Rate Limiting, Request Logging)
 setup_middleware(app)
 
@@ -49,5 +51,14 @@ setup_exception_handlers(app)
 
 # Include API routes
 app.include_router(router)
+
+# Mount Static File Directories for Reports and Predictions
+reports_path = PROJECT_ROOT / "reports"
+predictions_path = PROJECT_ROOT / "predictions"
+
+if reports_path.exists():
+    app.mount("/reports", StaticFiles(directory=str(reports_path)), name="reports")
+if predictions_path.exists():
+    app.mount("/predictions", StaticFiles(directory=str(predictions_path)), name="predictions")
 
 logger.info("NIDS FastAPI Backend Application initialized successfully.")

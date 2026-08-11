@@ -25,6 +25,7 @@ from src.alert_engine import AlertEngine
 from src.audit_logger import AuditLogger
 from src.auth import AuthService
 from src.ioc_manager import IOCManager
+from src.report_engine import DynamicReportEngine
 from src.rbac import RBACManager
 from src.siem_connector import SIEMConnectorManager
 from src.soar_engine import SOAREngine
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 alert_engine = AlertEngine()
+report_engine = DynamicReportEngine()
 siem_manager = SIEMConnectorManager()
 ioc_manager = IOCManager()
 soar_engine = SOAREngine()
@@ -145,6 +147,56 @@ async def reset_session_metrics() -> Dict[str, str]:
     from api.session_metrics import session_metrics_manager
     session_metrics_manager.reset()
     return {"status": "reset", "message": "Session metrics reset to zero"}
+
+
+# ==========================================
+# DYNAMIC REPORTING ENGINE ENDPOINTS
+# ==========================================
+
+@router.get("/reports/generate", summary="Generate Fresh Dynamic Security Report", tags=["Reports Engine"])
+async def generate_dynamic_report() -> Dict[str, Any]:
+    """Triggers fresh live report compilation pulling directly from predictions/alerts.db and active session metrics."""
+    data = report_engine.get_live_report_data()
+    return {
+        "status": "success",
+        "message": "Report compiled dynamically from alerts.db",
+        "timestamp": data.get("timestamp"),
+        "total_flows": data.get("db_summary", {}).get("total_flows_ever", 0),
+        "total_attacks": data.get("db_summary", {}).get("total_attacks_ever", 0),
+        "session_predictions": data.get("session_metrics", {}).get("prediction_count", 0)
+    }
+
+
+@router.get("/reports/download/html", summary="Download Fresh HTML Security Report", tags=["Reports Engine"])
+async def download_html_report():
+    """Generates and downloads a fresh responsive HTML security report compiled from alerts.db."""
+    html_content = report_engine.generate_html_report()
+    headers = {"Content-Disposition": "inline; filename=cortex_security_report.html"}
+    return Response(content=html_content, media_type="text/html", headers=headers)
+
+
+@router.get("/reports/download/pdf", summary="Download Fresh PDF Security Report", tags=["Reports Engine"])
+async def download_pdf_report():
+    """Generates and downloads a fresh PDF security report compiled from alerts.db using ReportLab."""
+    pdf_bytes = report_engine.generate_pdf_bytes()
+    headers = {"Content-Disposition": "attachment; filename=cortex_security_report.pdf"}
+    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
+
+@router.get("/reports/download/csv", summary="Download Fresh CSV Detection Logs", tags=["Reports Engine"])
+async def download_csv_report():
+    """Generates and downloads a fresh CSV export of all detection logs in alerts.db."""
+    csv_content = report_engine.generate_csv_string()
+    headers = {"Content-Disposition": "attachment; filename=cortex_detection_logs.csv"}
+    return Response(content=csv_content, media_type="text/csv", headers=headers)
+
+
+@router.get("/reports/download/markdown", summary="Download Fresh Markdown Audit Report", tags=["Reports Engine"])
+async def download_markdown_report():
+    """Generates and downloads a fresh Markdown security audit report."""
+    md_content = report_engine.generate_markdown_report()
+    headers = {"Content-Disposition": "attachment; filename=cortex_security_report.md"}
+    return Response(content=md_content, media_type="text/markdown", headers=headers)
 
 
 # ==========================================

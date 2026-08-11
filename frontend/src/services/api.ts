@@ -150,4 +150,15 @@ export const apiService = {
     }
     return `${API_BASE_URL}/historical-threats/export/json?${searchParams.toString()}`;
   },
+
+  // Dynamic Report Engine API
+  generateReport: async (): Promise<any> => {
+    const res = await apiClient.get<any>('/reports/generate');
+    return res.data;
+  },
+
+  getReportPdfUrl: (): string => `${API_BASE_URL}/reports/download/pdf`,
+  getReportHtmlUrl: (): string => `${API_BASE_URL}/reports/download/html`,
+  getReportCsvUrl: (): string => `${API_BASE_URL}/reports/download/csv`,
+  getReportMarkdownUrl: (): string => `${API_BASE_URL}/reports/download/markdown`,
 };
