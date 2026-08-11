@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ CORTEX NIDS
+# CORTEX NIDS
 ### Commercial-Grade Real-Time Network Intrusion Detection System & Security Operations Platform
 
 <p align="center">
@@ -13,13 +13,13 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" />
 </p>
 
-[**🌐 Live Repo**](https://github.com/saifvector/cortex-nids) • [**📖 Interactive API Docs**](http://localhost:8000/docs) • [**⚡ Quick Start**](#-quick-start--installation) • [**🧪 Live Telemetry Guide**](#-live-telemetry--traffic-testing-guide)
+[**Live Repo**](https://github.com/saifvector/cortex-nids) • [**Interactive API Docs**](http://localhost:8000/docs) • [**Quick Start**](#quick-start--installation) • [**Live Telemetry Guide**](#live-telemetry--traffic-testing-guide)
 
 ---
 
 </div>
 
-## 📌 Executive Overview
+## Executive Overview
 
 **Cortex NIDS** is an enterprise-class, machine learning-powered Security Operations Center (SOC) platform designed to sniff, classify, score, and neutralize high-throughput network threats in real time. 
 
@@ -27,39 +27,39 @@ Powered by a **LightGBM Classifier Engine (`99.87%` accuracy, `20.4ms` latency)*
 
 ---
 
-## ✨ Key Features at a Glance
+## Key Features at a Glance
 
 | Feature Module | Description | Technical Implementation |
 | :--- | :--- | :--- |
-| ⚡ **Live Threat Monitor** | Sub-second real-time WebSocket alert stream with animated threat cards. | Scapy Sniffer + `/ws/alerts` WebSockets |
-| 🧠 **ML Prediction Engine** | 15-class intrusion classifier scoring risk levels (`Low` to `Critical`). | LightGBM + Joblib Pipeline |
-| 📦 **Historical Threats Archive** | Permanent SQLite threat database (`alerts.db`) with full search & modal inspection. | SQLite + SQLAlchemy + Dynamic Filters |
-| 📊 **Historical Analytics** | Threat trend timelines, attack pie charts, and top attacker IP heatmaps. | Recharts + Analytical Queries |
-| 📄 **Dynamic Report Engine** | Compiles on-demand **PDF**, **HTML**, **CSV**, and **Markdown** security audit reports. | ReportLab + Dynamic Pandas Exporter |
-| 🔍 **Global System Search** | Instant modal search matching IPs, Attack Types, Alert IDs, Ports, and Modules. | `GET /search` + `⌘K` / `Ctrl+K` Hotkey |
-| 🔔 **SOC Notification Center** | Real-time WebSocket alert notifications with unread counter badges. | NotificationStore + Slide-Over Drawer |
-| 🧠 **Explainable AI (XAI)** | Live feature importance rankings extracted directly from trained model checkpoints. | `model.feature_importances_` + Recharts |
+| **Live Threat Monitor** | Sub-second real-time WebSocket alert stream with animated threat cards. | Scapy Sniffer + `/ws/alerts` WebSockets |
+| **ML Prediction Engine** | 15-class intrusion classifier scoring risk levels (`Low` to `Critical`). | LightGBM + Joblib Pipeline |
+| **Historical Threats Archive** | Permanent SQLite threat database (`alerts.db`) with full search & modal inspection. | SQLite + SQLAlchemy + Dynamic Filters |
+| **Historical Analytics** | Threat trend timelines, attack pie charts, and top attacker IP heatmaps. | Recharts + Analytical Queries |
+| **Dynamic Report Engine** | Compiles on-demand **PDF**, **HTML**, **CSV**, and **Markdown** security audit reports. | ReportLab + Dynamic Pandas Exporter |
+| **Global System Search** | Instant modal search matching IPs, Attack Types, Alert IDs, Ports, and Modules. | `GET /search` + `⌘K` / `Ctrl+K` Hotkey |
+| **SOC Notification Center** | Real-time WebSocket alert notifications with unread counter badges. | NotificationStore + Slide-Over Drawer |
+| **Explainable AI (XAI)** | Live feature importance rankings extracted directly from trained model checkpoints. | `model.feature_importances_` + Recharts |
 
 ---
 
-## 🏛️ Architectural Navigation & Data Flow
+## Architectural Navigation & Data Flow
 
 Cortex NIDS completely decouples **LIVE Session Telemetry** from **HISTORICAL Database Archives**:
 
 | Module Category | Navigation Target | Primary Data Source | Scope & Purpose |
 | :--- | :--- | :--- | :--- |
-| **🔴 Dashboard** | `/` | In-Memory (`SessionMetrics`) | **LIVE Session Telemetry** (Resets on server restart) |
-| **⚡ Live Threats** | `/live-threats` | WebSocket (`/ws/alerts`) | **Real-Time Alert Stream** (Sub-second animated cards) |
-| **📦 Historical Threats** | `/historical-threats` | SQLite (`alerts.db`) | **Permanent Threat Archive** (Multi-filter search & modal) |
-| **📊 Historical Analytics** | `/analytics` | SQLite (`alerts.db`) | **Cumulative Trends** & Attacker IP Heatmaps |
-| **📄 Reports Center** | `/reports` | Dynamic `alerts.db` Engine | **On-Demand Report Export** (PDF, HTML, CSV, Markdown) |
-| **🧪 Single Predictor** | `/predict` | ML Pipeline (`LightGBM`) | **Single-Flow ML Inference Sandbox** |
-| **📂 Batch Analysis** | `/batch` | ML Pipeline (`LightGBM`) | **Bulk CSV Network Traffic Classification** |
-| **🧠 Feature Importance**| `/features` | Model Checkpoint Object | **Live XAI Model Feature Importance Rankings** |
+| **Dashboard** | `/` | In-Memory (`SessionMetrics`) | **LIVE Session Telemetry** (Resets on server restart) |
+| **Live Threats** | `/live-threats` | WebSocket (`/ws/alerts`) | **Real-Time Alert Stream** (Sub-second animated cards) |
+| **Historical Threats** | `/historical-threats` | SQLite (`alerts.db`) | **Permanent Threat Archive** (Multi-filter search & modal) |
+| **Historical Analytics** | `/analytics` | SQLite (`alerts.db`) | **Cumulative Trends** & Attacker IP Heatmaps |
+| **Reports Center** | `/reports` | Dynamic `alerts.db` Engine | **On-Demand Report Export** (PDF, HTML, CSV, Markdown) |
+| **Single Predictor** | `/predict` | ML Pipeline (`LightGBM`) | **Single-Flow ML Inference Sandbox** |
+| **Batch Analysis** | `/batch` | ML Pipeline (`LightGBM`) | **Bulk CSV Network Traffic Classification** |
+| **Feature Importance**| `/features` | Model Checkpoint Object | **Live XAI Model Feature Importance Rankings** |
 
 ```mermaid
 flowchart TD
-    subgraph Capture["📡 Packet Capture & Telemetry"]
+    subgraph Capture["Packet Capture & Telemetry"]
         A1["Scapy Live Packet Sniffer"]
         A2["Synthetic Attack Simulator"]
         A3["Flow Builder (5-Tuple)"]
@@ -67,7 +67,7 @@ flowchart TD
         A2 --> A3
     end
 
-    subgraph ML["🧠 Machine Learning & Inference"]
+    subgraph ML["Machine Learning & Inference"]
         B1["20-Feature Extractor & Scaler"]
         B2["LightGBM Classifier Engine"]
         B3["Risk Score & Severity Evaluator"]
@@ -76,7 +76,7 @@ flowchart TD
         B2 --> B3
     end
 
-    subgraph Core["⚡ FastAPI Core & Storage"]
+    subgraph Core["FastAPI Core & Storage"]
         C1["FastAPI Application Server"]
         C2["SQLite Archive (alerts.db)"]
         C3["Session Metrics Manager"]
@@ -87,7 +87,7 @@ flowchart TD
         C1 --> C4
     end
 
-    subgraph UI["🛡️ SOC Dashboard & Integrations"]
+    subgraph UI["SOC Dashboard & Integrations"]
         D1["React 18 Liquid Glass UI"]
         D2["SIEM Connectors (CEF/LEEF)"]
         D3["SOAR Firewall Response"]
@@ -99,7 +99,7 @@ flowchart TD
 
 ---
 
-## 🧪 Live Telemetry & Traffic Testing Guide
+## Live Telemetry & Traffic Testing Guide
 
 You can test live intrusion detection using either **Real Packet Capture Sniffing** or **Synthetic Attack Simulation**.
 
@@ -121,7 +121,7 @@ npm --prefix frontend run dev
 
 ### Step 2: Choose Live Traffic Test Method
 
-#### 🌐 Method A: Real Packet Capture Sniffer (`scripts/run_live_monitor.py`)
+#### Method A: Real Packet Capture Sniffer (`scripts/run_live_monitor.py`)
 Sniffs real network packets directly from your Wi-Fi/Ethernet adapters using Scapy, builds 5-tuple flow statistics, executes ML inference, and logs alerts to `alerts.db` and the UI:
 
 1. **List Network Interfaces**:
@@ -148,7 +148,7 @@ Sniffs real network packets directly from your Wi-Fi/Ethernet adapters using Sca
 
 ---
 
-#### ⚡ Method B: Synthetic Threat Generator (`scripts/simulate_live_attacks.py`)
+#### Method B: Synthetic Threat Generator (`scripts/simulate_live_attacks.py`)
 Generates realistic statistical attack profiles (DoS, DDoS, PortScan, Benign) and posts prediction telemetry directly to the API & WebSockets every second:
 
 ```powershell
@@ -158,10 +158,10 @@ Generates realistic statistical attack profiles (DoS, DDoS, PortScan, Benign) an
 
 | Profile Name | Weight | Target Protocol | Description |
 | :--- | :---: | :--- | :--- |
-| 🟢 **BENIGN** | `70%` | HTTP (80/443), DNS (53) | Clean web browsing & name resolution traffic. |
-| 🔴 **DoS GoldenEye** | `10%` | HTTP (80/443) | High packet-volume HTTP Denial-of-Service attack. |
-| ⚡ **DDoS** | `10%` | TCP (80/8080/22) | Massive bandwidth Distributed Denial-of-Service. |
-| 🔍 **PortScan** | `10%` | Multi-Port Probes | Rapid single-packet scanning across ports 21–8443. |
+| **BENIGN** | `70%` | HTTP (80/443), DNS (53) | Clean web browsing & name resolution traffic. |
+| **DoS GoldenEye** | `10%` | HTTP (80/443) | High packet-volume HTTP Denial-of-Service attack. |
+| **DDoS** | `10%` | TCP (80/8080/22) | Massive bandwidth Distributed Denial-of-Service. |
+| **PortScan** | `10%` | Multi-Port Probes | Rapid single-packet scanning across ports 21–8443. |
 
 ---
 
@@ -174,7 +174,7 @@ Generates realistic statistical attack profiles (DoS, DDoS, PortScan, Benign) an
 
 ---
 
-## 🚀 Quick Start & Installation
+## Quick Start & Installation
 
 ```bash
 # Clone the repository
@@ -208,7 +208,7 @@ docker compose up -d --build
 
 ---
 
-## 🌐 Application Access Points
+## Application Access Points
 
 | Service | Access URL | Description |
 | :--- | :--- | :--- |
@@ -222,7 +222,7 @@ docker compose up -d --build
 
 ---
 
-## 📊 Dataset & Machine Learning Performance
+## Dataset & Machine Learning Performance
 
 The system is trained on **2,830,743 network traffic records** from the benchmark CICIDS2017 dataset, covering 15 attack vectors.
 
@@ -237,7 +237,7 @@ The system is trained on **2,830,743 network traffic records** from the benchmar
 
 ---
 
-## 🧪 Automated Testing & System QA
+## Automated Testing & System QA
 
 Run the full automated test suite (70 test cases, 100% pass rate):
 
@@ -263,7 +263,7 @@ Pass Rate                 : 100.0%
 
 ---
 
-## 📄 License & Acknowledgements
+## License & Acknowledgements
 
 - **Repository**: [`https://github.com/saifvector/cortex-nids`](https://github.com/saifvector/cortex-nids)
 - **Author**: [@saifvector](https://github.com/saifvector)
