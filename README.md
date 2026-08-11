@@ -71,20 +71,49 @@ npm --prefix frontend run dev
 
 ---
 
-### Step 2: Run the Live Attack Simulation Script
+### Step 2: Stream Live Telemetry & Test Live Traffic
 
-In **Terminal 3**, run the live attack & traffic generator:
+You can test live threat detection using either **Real Packet Capture Sniffing** or **Synthetic Attack Simulation**.
+
+#### Option A: Real Network Interface Sniffer (`scripts/run_live_monitor.py`)
+Sniffs real network packets directly from your Wi-Fi/Ethernet adapters using Scapy, builds bidirectional 5-tuple flow statistics, executes LightGBM ML inference, and logs alerts to `alerts.db` and the UI:
+
+1. **List Network Interfaces**:
+   ```powershell
+   .\.venv\Scripts\python.exe scripts/run_live_monitor.py --list-ifaces
+   ```
+
+2. **Start Continuous Live Packet Monitoring**:
+   ```powershell
+   .\.venv\Scripts\python.exe scripts/run_live_monitor.py --duration 0
+   ```
+
+3. **Generate Real Traffic (e.g. Ping Google or Web Browsing)**:
+   In a separate terminal, trigger real ICMP/HTTP network traffic:
+   ```powershell
+   # Ping Google continuously to generate live network packet flows
+   ping google.com -t
+   ```
+   Or send HTTP GET requests:
+   ```powershell
+   curl https://google.com
+   ```
+   *Watch `run_live_monitor.py` capture the live ICMP/TCP packets, extract features, predict risk, and stream alerts to the dashboard live!*
+
+---
+
+#### Option B: Synthetic Attack Simulation Script (`scripts/simulate_live_attacks.py`)
+Generates realistic statistical attack profiles (DoS, DDoS, PortScan, Benign) and posts prediction telemetry directly to the API & WebSockets every second:
 
 ```powershell
-# Stream live threat traffic every 1.0 second continuously
+# Stream live attack telemetry every 1.0 second continuously
 .\.venv\Scripts\python.exe scripts/simulate_live_attacks.py --interval 1.0 --duration 0
 ```
 
-#### Simulation Parameters:
-* `--interval 1.0`: Sends **1 new live network flow prediction every 1.0 second**.
-* `--duration 0`: Runs **continuously in an infinite loop** (press `Ctrl + C` to stop).
+* **`--interval 1.0`**: Sends **1 new live network flow prediction every 1.0 second**.
+* **`--duration 0`**: Runs **continuously in an infinite loop** (press `Ctrl + C` to stop).
 
-#### Attack Traffic Distribution Generated:
+##### Attack Traffic Distribution Generated:
 * 🟢 **70% BENIGN**: Normal Web/DNS/HTTP browsing flows.
 * 🔴 **10% DoS GoldenEye**: High packet-volume HTTP Denial-of-Service attack flows.
 * ⚡ **10% DDoS**: Massive bandwidth Distributed Denial-of-Service attack vectors.
