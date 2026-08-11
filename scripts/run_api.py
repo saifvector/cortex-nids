@@ -26,19 +26,20 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000)")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
 
-    args = parser.parse_args()
+    import os
+    port = int(os.environ.get("PORT", args.port))
 
     logging.info("=" * 60)
     logging.info("Starting NIDS Production FastAPI Backend Server")
-    logging.info("Binding to %s:%d", args.host, args.port)
-    logging.info("Swagger Documentation: http://localhost:%d/docs", args.port)
-    logging.info("ReDoc Documentation:   http://localhost:%d/redoc", args.port)
+    logging.info("Binding to %s:%d", args.host, port)
+    logging.info("Swagger Documentation: http://localhost:%d/docs", port)
+    logging.info("ReDoc Documentation:   http://localhost:%d/redoc", port)
     logging.info("=" * 60)
 
     uvicorn.run(
         "api.main:app",
         host=args.host,
-        port=args.port,
+        port=port,
         reload=args.reload,
         log_level="info"
     )
