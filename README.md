@@ -46,17 +46,16 @@ Powered by a **LightGBM Classifier Engine (`99.87%` accuracy, `20.4ms` latency)*
 
 Cortex NIDS completely decouples **LIVE Session Telemetry** from **HISTORICAL Database Archives**:
 
-```text
- ┌─────────────────────────────────────────────────────────────────────────────┐
- │                         CORTEX NIDS NAVIGATION                              │
- ├──────────────────┬──────────────────┬──────────────────┬────────────────────┤
- │ 🔴 Dashboard     │ ⚡ Live Threats  │ 📦 Historical    │ 📊 Historical      │
- │    (Session)     │    (WebSocket)   │    Threats (DB)  │    Analytics       │
- ├──────────────────┼──────────────────┼──────────────────┼────────────────────┤
- │ 📄 Reports       │ 🧪 Single        │ 📂 Batch         │ 🧠 Feature         │
- │    Center        │    Predictor     │    Analysis      │    Importance (XAI)│
- └──────────────────┴──────────────────┴──────────────────┴────────────────────┘
-```
+| Module Category | Navigation Target | Primary Data Source | Scope & Purpose |
+| :--- | :--- | :--- | :--- |
+| **🔴 Dashboard** | `/` | In-Memory (`SessionMetrics`) | **LIVE Session Telemetry** (Resets on server restart) |
+| **⚡ Live Threats** | `/live-threats` | WebSocket (`/ws/alerts`) | **Real-Time Alert Stream** (Sub-second animated cards) |
+| **📦 Historical Threats** | `/historical-threats` | SQLite (`alerts.db`) | **Permanent Threat Archive** (Multi-filter search & modal) |
+| **📊 Historical Analytics** | `/analytics` | SQLite (`alerts.db`) | **Cumulative Trends** & Attacker IP Heatmaps |
+| **📄 Reports Center** | `/reports` | Dynamic `alerts.db` Engine | **On-Demand Report Export** (PDF, HTML, CSV, Markdown) |
+| **🧪 Single Predictor** | `/predict` | ML Pipeline (`LightGBM`) | **Single-Flow ML Inference Sandbox** |
+| **📂 Batch Analysis** | `/batch` | ML Pipeline (`LightGBM`) | **Bulk CSV Network Traffic Classification** |
+| **🧠 Feature Importance**| `/features` | Model Checkpoint Object | **Live XAI Model Feature Importance Rankings** |
 
 ```mermaid
 flowchart TD
