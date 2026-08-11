@@ -256,3 +256,171 @@ class AlertEngine:
             "average_confidence": float(round(df["confidence"].mean(), 4)),
             "average_risk_score": float(round(df["risk_score"].mean(), 2))
         }
+
+    # ==========================================
+    # HISTORICAL ANALYTICS METHODS (alerts.db)
+    # ==========================================
+
+    def get_analytics_summary(self) -> Dict[str, Any]:
+        """Queries permanent historical totals from alerts.db."""
+        if not self.sqlite_path.exists():
+            return {
+                "total_flows_ever": 0,
+                "total_attacks_ever": 0,
+                "total_benign_ever": 0,
+                "average_confidence_ever": 0.0,
+                "average_latency_ever": 0.0,
+                "last_prediction_time": None
+            }
+
+        try:
+            with sqlite3.connect(str(self.sqlite_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN attack_type != 'BENIGN' THEN 1 ELSE 0 END) as attacks,
+                        SUM(CASE WHEN attack_type = 'BENIGN' THEN 1 ELSE 0 END) as benigns,
+                        COALESCE(AVG(confidence), 0.0) as avg_conf,
+                        COALESCE(AVG(prediction_time_ms), 0.0) as avg_lat,
+                        MAX(timestamp) as last_ts
+                    FROM alerts
+                """)
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        "total_flows_ever": int(row["total"] or 0),
+                        "total_attacks_ever": int(row["attacks"] or 0),
+                        "total_benign_ever": int(row["benigns"] or 0),
+                        "average_confidence_ever": float(round(row["avg_conf"] or 0.0, 4)),
+                        "average_latency_ever": float(round(row["avg_lat"] or 0.0, 3)),
+                        "last_prediction_time": str(row["last_ts"]) if row["last_ts"] else None
+                    }
+        except Exception as e:
+            logger.error("Error in get_analytics_summary: %s", e)
+
+        return {
+            "total_flows_ever": 0,
+            "total_attacks_ever": 0,
+            "total_benign_ever": 0,
+            "average_confidence_ever": 0.0,
+            "average_latency_ever": 0.0,
+            "last_prediction_time": None
+        }
+
+    def get_analytics_trends(self, time_range: str = "all") -> List[Dict[str, Any]]:
+        """Returns time series trend points from alerts.db grouped by hour/date."""
+        if not self.sqlite_path.exists():
+            return []
+
+        # Determine datetime filter & grouping
+        group_fmt = "%Y-%m-%d %H:00" if time_range == "24h" else "%Y-%m-%d"
+        time_filter = ""
+        params = []
+
+        if time_range == "24h":
+            time_filter = "WHERE timestamp >= datetime('now', '-1 day')"
+        elif time_range == "7d":
+            time_filter = "WHERE timestamp >= datetime('now', '-7 days')"
+        elif time_range == "30d":
+            time_filter = "WHERE timestamp >= datetime('now', '-30 days')"
+
+        query = f"""
+            SELECT
+                strftime('{group_fmt}', timestamp) as time_label,
+                COUNT(*) as total,
+                SUM(CASE WHEN attack_type = 'BENIGN' THEN 1 ELSE 0 END) as benign,
+                SUM(CASE WHEN attack_type != 'BENIGN' THEN 1 ELSE 0 END) as attacks
+            FROM alerts
+            {time_filter}
+            GROUP BY time_label
+            ORDER BY time_label ASC
+            LIMIT 100
+        """
+
+        trends = []
+        try:
+            with sqlite3.connect(str(self.sqlite_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                for r in cursor.fetchall():
+                    trends.append({
+                        "time": str(r["time_label"] or "Unknown"),
+                        "total": int(r["total"] or 0),
+                        "benign": int(r["benign"] or 0),
+                        "attacks": int(r["attacks"] or 0)
+                    })
+        except Exception as e:
+            logger.error("Error in get_analytics_trends: %s", e)
+
+        return trends
+
+    def get_analytics_top_attacks(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Returns top attack categories and counts from alerts.db."""
+        if not self.sqlite_path.exists():
+            return []
+
+        query = """
+            SELECT
+                attack_type,
+                COUNT(*) as count,
+                AVG(confidence) as avg_confidence,
+                AVG(risk_score) as avg_risk_score
+            FROM alerts
+            GROUP BY attack_type
+            ORDER BY count DESC
+            LIMIT ?
+        """
+
+        results = []
+        try:
+            with sqlite3.connect(str(self.sqlite_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(query, (limit,))
+                for r in cursor.fetchall():
+                    results.append({
+                        "attack_type": str(r["attack_type"]),
+                        "count": int(r["count"] or 0),
+                        "average_confidence": float(round(r["avg_confidence"] or 0.0, 4)),
+                        "average_risk_score": float(round(r["avg_risk_score"] or 0.0, 2))
+                    })
+        except Exception as e:
+            logger.error("Error in get_analytics_top_attacks: %s", e)
+
+        return results
+
+    def get_analytics_severity(self) -> Dict[str, int]:
+        """Returns severity breakdown counts from alerts.db."""
+        if not self.sqlite_path.exists():
+            return {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+
+        query = """
+            SELECT
+                SUM(CASE WHEN risk_level = 'Critical' THEN 1 ELSE 0 END) as criticals,
+                SUM(CASE WHEN risk_level = 'High' THEN 1 ELSE 0 END) as highs,
+                SUM(CASE WHEN risk_level = 'Medium' THEN 1 ELSE 0 END) as mediums,
+                SUM(CASE WHEN risk_level = 'Low' THEN 1 ELSE 0 END) as lows
+            FROM alerts
+        """
+
+        try:
+            with sqlite3.connect(str(self.sqlite_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(query)
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        "Critical": int(row["criticals"] or 0),
+                        "High": int(row["highs"] or 0),
+                        "Medium": int(row["mediums"] or 0),
+                        "Low": int(row["lows"] or 0)
+                    }
+        except Exception as e:
+            logger.error("Error in get_analytics_severity: %s", e)
+
+        return {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+

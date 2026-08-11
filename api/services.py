@@ -1,7 +1,7 @@
 """
 Services module for NIDS FastAPI Backend.
-Integrates Module 8 PredictionService, persists predictions to SQLite via AlertEngine,
-and provides API metrics from the MetricsManager.
+Integrates Module 8 PredictionService, maintains in-memory session metrics via SessionMetricsManager,
+and persists historical predictions to SQLite via AlertEngine.
 """
 import io
 import logging
@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from api.exceptions import ModelNotLoadedException, InvalidInputFormatException, BatchProcessingException
-from api.metrics_manager import metrics_manager
+from api.session_metrics import session_metrics_manager
 from src.alert_engine import AlertEngine
 from src.prediction_service import PredictionService
 from src.utils.utils import get_absolute_path, load_json
@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 class APIService:
     """
     Singleton API Service wrapping Module 8 PredictionService.
-    All predictions are persisted to alerts.db via AlertEngine so that
-    get_metrics() always reflects reality from the single source of truth (SQLite).
+    Active prediction session counters are stored in memory via SessionMetricsManager.
+    All predictions are also persisted to alerts.db via AlertEngine for historical analysis.
     """
 
     def __init__(self, output_dir: str = "predictions"):
@@ -39,7 +39,7 @@ class APIService:
             self.model_loaded = False
 
     def increment_requests(self) -> None:
-        metrics_manager.increment_requests()
+        session_metrics_manager.increment_requests()
 
     def get_model_info(self) -> Dict[str, Any]:
         """Returns model metadata and training details."""
@@ -56,14 +56,24 @@ class APIService:
         }
 
     def predict_single_flow(self, flow_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Executes single network flow prediction and persists to alerts.db."""
+        """Executes single network flow prediction, records session metrics, and persists to alerts.db."""
         if not self.model_loaded or not self.prediction_service:
             raise ModelNotLoadedException()
 
         try:
             result = self.prediction_service.predictor.predict_single(flow_data)
 
-            # Persist to SQLite via AlertEngine (source of truth for metrics)
+            # 1. Update in-memory session metrics
+            session_metrics_manager.record_prediction(
+                attack_type=result.get("Attack_Type", "BENIGN"),
+                confidence=float(result.get("Prediction_Confidence", 0.99)),
+                risk_score=float(result.get("Risk_Score", 0.0)),
+                risk_level=result.get("Risk_Level", "Low"),
+                latency_ms=float(result.get("Prediction_Time_ms", 0.035)),
+                count=1
+            )
+
+            # 2. Persist to SQLite via AlertEngine for historical analysis
             self.alert_engine.process_prediction(
                 prediction_result=result,
                 src_ip=flow_data.get("_src_ip", "API-Client"),
@@ -95,9 +105,17 @@ class APIService:
             ab = summary.get("attack_breakdown", {})
             rb = summary.get("risk_level_breakdown", {})
 
-            # Persist each attack category to alerts.db
+            # Record session metrics & persist each attack category to alerts.db
             for atk, cnt in ab.items():
                 risk_level = "Critical" if atk != "BENIGN" else "Low"
+                session_metrics_manager.record_prediction(
+                    attack_type=atk,
+                    confidence=im["average_confidence"],
+                    risk_score=im["average_risk_score"],
+                    risk_level=risk_level,
+                    latency_ms=im["average_latency_ms"],
+                    count=cnt
+                )
                 for _ in range(cnt):
                     self.alert_engine.process_prediction(
                         prediction_result={
@@ -129,8 +147,8 @@ class APIService:
             raise BatchProcessingException(f"Failed processing uploaded CSV file: {str(e)}")
 
     def get_metrics(self) -> Dict[str, Any]:
-        """Returns runtime API and prediction performance metrics."""
-        return metrics_manager.get_metrics()
+        """Returns active in-memory session performance metrics."""
+        return session_metrics_manager.get_metrics()
 
     def get_feature_importance(self) -> Dict[str, Any]:
         """Returns top feature importances."""
@@ -140,7 +158,6 @@ class APIService:
         model_name = self.prediction_service.model_name
         feature_names = self.prediction_service.feature_names
 
-        # Check if feature_importance.csv is available in reports/explainability/ or data/processed/
         fi_path = get_absolute_path("reports/explainability/feature_importance.csv")
         top_features = []
 

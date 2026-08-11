@@ -115,10 +115,64 @@ async def batch_predict_csv(
     return summary
 
 
-@router.get("/metrics", response_model=MetricsResponse, summary="Get API & Prediction Metrics", tags=["Monitoring"])
+    return summary
+
+
+@router.get("/metrics", response_model=MetricsResponse, summary="Get Active Session Metrics", tags=["Monitoring"])
 async def get_api_metrics(service: APIService = Depends(get_api_service)) -> Dict[str, Any]:
-    """Returns total requests served, prediction count, average latency (ms), and average confidence."""
+    """Returns active in-memory session metrics (resets to zero when backend starts)."""
     return service.get_metrics()
+
+
+@router.post("/metrics/record", summary="Record Live Session Metric Event", tags=["Monitoring"])
+async def record_session_metric(payload: Dict[str, Any]) -> Dict[str, str]:
+    """Records a live prediction event into active SessionMetricsManager."""
+    from api.session_metrics import session_metrics_manager
+    session_metrics_manager.record_prediction(
+        attack_type=payload.get("attack_type", "BENIGN"),
+        confidence=float(payload.get("confidence", 0.99)),
+        risk_score=float(payload.get("risk_score", 0.0)),
+        risk_level=payload.get("risk_level", "Low"),
+        latency_ms=float(payload.get("latency_ms", 0.035)),
+        count=int(payload.get("count", 1))
+    )
+    return {"status": "success"}
+
+
+@router.post("/metrics/reset", summary="Reset Active Session Metrics", tags=["Monitoring"])
+async def reset_session_metrics() -> Dict[str, str]:
+    """Resets all session metric counters to zero."""
+    from api.session_metrics import session_metrics_manager
+    session_metrics_manager.reset()
+    return {"status": "reset", "message": "Session metrics reset to zero"}
+
+
+# ==========================================
+# HISTORICAL ANALYTICS ENDPOINTS (alerts.db)
+# ==========================================
+
+@router.get("/analytics/summary", summary="Get Historical Permanent Analytics Summary", tags=["Historical Analytics"])
+async def get_historical_summary() -> Dict[str, Any]:
+    """Returns permanent historical totals (total flows ever, attacks ever, benign ever, avg confidence, avg latency) from alerts.db."""
+    return alert_engine.get_analytics_summary()
+
+
+@router.get("/analytics/trends", summary="Get Historical Threat Trend Time Series", tags=["Historical Analytics"])
+async def get_historical_trends(time_range: str = Query("all", description="Time range filter: 24h, 7d, 30d, all")) -> List[Dict[str, Any]]:
+    """Returns historical time-series flow and attack trend data points directly from alerts.db."""
+    return alert_engine.get_analytics_trends(time_range=time_range)
+
+
+@router.get("/analytics/top-attacks", summary="Get Top Historical Attack Categories", tags=["Historical Analytics"])
+async def get_historical_top_attacks(limit: int = Query(10, ge=1, le=50)) -> List[Dict[str, Any]]:
+    """Returns top ranked attack categories and counts directly from alerts.db."""
+    return alert_engine.get_analytics_top_attacks(limit=limit)
+
+
+@router.get("/analytics/severity", summary="Get Historical Risk Severity Distribution", tags=["Historical Analytics"])
+async def get_historical_severity() -> Dict[str, int]:
+    """Returns severity distribution breakdown directly from alerts.db."""
+    return alert_engine.get_analytics_severity()
 
 
 @router.get(

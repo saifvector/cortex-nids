@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import {
-  Activity, Clock, Award, Server, Radio, ArrowUpRight, Sparkles
+  Activity, Clock, Award, Server, Radio, ArrowUpRight, Sparkles, RefreshCw
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { MetricsResponse, ModelInfoResponse, HealthResponse } from '../types/api';
@@ -16,46 +16,43 @@ export const Dashboard: React.FC = () => {
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [modelInfo, setModelInfo] = useState<ModelInfoResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [dailyReport, setDailyReport] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchTelemetry = async () => {
+  const fetchSessionTelemetry = async () => {
     try {
-      const [m, info, h, rep, alt] = await Promise.all([
+      const [m, info, h, alt] = await Promise.all([
         apiService.getMetrics(),
         apiService.getModelInfo().catch(() => null),
         apiService.getHealth().catch(() => null),
-        apiService.getDailyReport().catch(() => null),
         apiService.getAlerts({ limit: 5 }).catch(() => []),
       ]);
       setMetrics(m);
       if (info) setModelInfo(info);
       if (h) setHealth(h);
-      if (rep) setDailyReport(rep);
       if (alt) setAlerts(alt);
     } catch (err) {
-      console.error('Error fetching dashboard telemetry:', err);
+      console.error('Error fetching session telemetry:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 3000);
+    fetchSessionTelemetry();
+    const interval = setInterval(fetchSessionTelemetry, 3000);
     return () => clearInterval(interval);
   }, []);
 
   if (loading) {
-    return <LoadingSpinner label="Initializing Dynamic SOC Telemetry..." size="lg" />;
+    return <LoadingSpinner label="Initializing Live Session Telemetry..." size="lg" />;
   }
 
-  // Dynamic Risk Distribution Data
-  const lowVal = metrics?.low_alerts ?? dailyReport?.risk_counts?.['Low'] ?? 0;
-  const medVal = metrics?.medium_alerts ?? dailyReport?.risk_counts?.['Medium'] ?? 0;
-  const highVal = metrics?.high_alerts ?? dailyReport?.risk_counts?.['High'] ?? 0;
-  const critVal = metrics?.critical_alerts ?? dailyReport?.risk_counts?.['Critical'] ?? 0;
+  // Session-Only Risk Distribution Data
+  const lowVal = metrics?.low_alerts ?? 0;
+  const medVal = metrics?.medium_alerts ?? 0;
+  const highVal = metrics?.high_alerts ?? 0;
+  const critVal = metrics?.critical_alerts ?? 0;
 
   const riskData = [
     { name: 'Low Risk', value: lowVal, color: '#10B981' },
@@ -64,12 +61,12 @@ export const Dashboard: React.FC = () => {
     { name: 'Critical Risk', value: critVal, color: '#F43F5E' },
   ];
 
-  // Dynamic Threat Score calculation
-  const totalPreds = metrics?.prediction_count || 1;
-  const attackPreds = metrics?.attack_count || (dailyReport?.total_alerts ? (dailyReport.total_alerts - (dailyReport.attack_counts?.['BENIGN'] || 0)) : 0);
-  const threatScore = Math.min(100, Math.max(0, (attackPreds / totalPreds) * 100 * 5)).toFixed(1);
+  // Session-Only Threat Score calculation
+  const totalPreds = metrics?.prediction_count ?? 0;
+  const attackPreds = metrics?.attack_count ?? 0;
+  const threatScore = totalPreds > 0 ? Math.min(100, Math.max(0, (attackPreds / totalPreds) * 100)).toFixed(1) : '0.0';
 
-  // Dynamic Recent Detections List
+  // Recent Detections List
   const recentDetections = alerts.map((alt) => ({
     id: alt.id || 'ALT-FLOW',
     timestamp: alt.timestamp?.split(' ')[1] || alt.timestamp || 'Just now',
@@ -80,12 +77,12 @@ export const Dashboard: React.FC = () => {
     latency: `${alt.prediction_time_ms || 0.035} ms`
   }));
 
-  // Threat Timeline Area Data
+  // Session Telemetry Timeline Data
   const timelineData = [
-    { time: '08:00', benign: Math.round(totalPreds * 0.15), DoS: Math.round(attackPreds * 0.1) },
-    { time: '10:00', benign: Math.round(totalPreds * 0.25), DoS: Math.round(attackPreds * 0.2) },
-    { time: '12:00', benign: Math.round(totalPreds * 0.20), DoS: Math.round(attackPreds * 0.25) },
-    { time: '14:00', benign: Math.round(totalPreds * 0.40), DoS: Math.round(attackPreds * 0.45) },
+    { time: 'T-15m', benign: Math.round(totalPreds * 0.15), DoS: Math.round(attackPreds * 0.1) },
+    { time: 'T-10m', benign: Math.round(totalPreds * 0.25), DoS: Math.round(attackPreds * 0.2) },
+    { time: 'T-5m', benign: Math.round(totalPreds * 0.20), DoS: Math.round(attackPreds * 0.25) },
+    { time: 'Now', benign: Math.round(totalPreds * 0.40), DoS: Math.round(attackPreds * 0.45) },
   ];
 
   return (
@@ -102,7 +99,7 @@ export const Dashboard: React.FC = () => {
         <div className="space-y-3 relative z-10 max-w-xl">
           <div className="flex items-center space-x-2">
             <span className="px-3 py-1 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 text-xs font-mono font-semibold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> AI XDR THREAT CONSOLE
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> LIVE SESSION MONITOR
             </span>
             <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-mono">
               CLASSIFIER: {modelInfo?.model_name || 'LGBMClassifier'}
@@ -110,10 +107,10 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <h1 className="text-2xl md:text-3xl font-display font-extrabold text-white tracking-tight leading-tight">
-            Autonomous Intrusion Intelligence & Cyber Defense
+            Active Session Telemetry Console
           </h1>
           <p className="text-xs text-slate-300 leading-relaxed font-sans">
-            Real-time multi-dimensional network flow telemetry, machine learning anomaly scoring, and automated risk mitigation platform.
+            Real-time in-memory session performance metrics. Counters reset to ZERO whenever the FastAPI server restarts.
           </p>
         </div>
 
@@ -142,8 +139,8 @@ export const Dashboard: React.FC = () => {
             </svg>
 
             <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-2xl font-bold font-mono text-white">{threatScore}</span>
-              <span className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest">THREAT SCORE</span>
+              <span className="text-2xl font-bold font-mono text-white">{threatScore}%</span>
+              <span className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest">SESSION THREAT</span>
               <span className="text-[9px] text-slate-400 font-mono">
                 {parseFloat(threatScore) > 50 ? 'HIGH SEVERITY' : 'NORMAL'}
               </span>
@@ -155,41 +152,41 @@ export const Dashboard: React.FC = () => {
       {/* KPI Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <KpiCard
-          title="Total Predictions"
-          value={metrics?.prediction_count?.toLocaleString() || '0'}
-          subtitle="Ingested traffic flows"
+          title="Session Predictions"
+          value={metrics?.prediction_count?.toLocaleString() ?? '0'}
+          subtitle="Flows in current session"
           icon={<Activity className="w-5 h-5" />}
           statusColor="cyan"
-          trend={`${metrics?.prediction_count || 0} flows`}
+          trend={`${metrics?.prediction_count ?? 0} session flows`}
         />
         <KpiCard
           title="Avg Confidence"
-          value={`${((metrics?.average_confidence || 0.9985) * 100).toFixed(2)}%`}
+          value={metrics?.average_confidence ? `${(metrics.average_confidence * 100).toFixed(2)}%` : '0.00%'}
           subtitle="Classifier certainty score"
           icon={<Award className="w-5 h-5" />}
           statusColor="emerald"
-          trend="Dynamic Mean"
+          trend="Active Mean"
         />
         <KpiCard
           title="Inference Latency"
-          value={`${(metrics?.average_latency_ms || 0.035).toFixed(3)} ms`}
-          subtitle="Real-time flow latency"
+          value={metrics?.average_latency_ms ? `${metrics.average_latency_ms.toFixed(3)} ms` : '0.000 ms'}
+          subtitle="Flow prediction latency"
           icon={<Clock className="w-5 h-5" />}
           statusColor="purple"
           trend="Sub-millisecond"
         />
         <KpiCard
-          title="HTTP API Requests"
-          value={metrics?.requests_served?.toLocaleString() || '0'}
-          subtitle="Requests served"
+          title="Session Requests"
+          value={metrics?.requests_served?.toLocaleString() ?? '0'}
+          subtitle="API calls served"
           icon={<Server className="w-5 h-5" />}
           statusColor={health?.healthy ? 'emerald' : 'rose'}
-          trend="HTTP 200 OK"
+          trend="Active Session"
         />
         <KpiCard
-          title="Attacks Detected"
-          value={metrics?.attack_count?.toLocaleString() || '0'}
-          subtitle={`${metrics?.benign_count?.toLocaleString() || 0} Benign`}
+          title="Session Attacks"
+          value={metrics?.attack_count?.toLocaleString() ?? '0'}
+          subtitle={`${metrics?.benign_count?.toLocaleString() ?? 0} Benign`}
           icon={<Radio className="w-5 h-5" />}
           statusColor={metrics?.attack_count && metrics.attack_count > 0 ? 'rose' : 'blue'}
           trend="Threat Counter"
@@ -201,9 +198,9 @@ export const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 liquid-glass-card p-6 rounded-2xl">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xs font-mono font-semibold text-slate-200 uppercase tracking-wider">
-              Network Threat Telemetry Volume Timeline
+              Active Session Threat Volume Timeline
             </h2>
-            <span className="text-[11px] font-mono text-cyan-400">Flows / Real-Time</span>
+            <span className="text-[11px] font-mono text-cyan-400">Flows / Live Session</span>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -229,10 +226,10 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Risk Distribution Donut */}
+        {/* Session Risk Distribution Donut */}
         <div className="liquid-glass-card p-6 rounded-2xl">
           <h2 className="text-xs font-mono font-semibold text-slate-200 uppercase tracking-wider mb-4">
-            Risk Severity Distribution
+            Session Risk Severity Distribution
           </h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -280,34 +277,40 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono text-slate-300">
-            <thead className="bg-white/[0.02] text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/10">
-              <tr>
-                <th className="p-3">Flow ID</th>
-                <th className="p-3">Timestamp</th>
-                <th className="p-3">Predicted Attack</th>
-                <th className="p-3">Confidence</th>
-                <th className="p-3">Risk Score</th>
-                <th className="p-3">Severity Level</th>
-                <th className="p-3">Latency</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {recentDetections.map((row) => (
-                <tr key={row.id} className="hover:bg-white/[0.04] transition-colors">
-                  <td className="p-3 font-semibold text-slate-400">{row.id}</td>
-                  <td className="p-3 text-slate-400">{row.timestamp}</td>
-                  <td className="p-3 font-bold text-white">{row.attack}</td>
-                  <td className="p-3 text-emerald-400">{(row.confidence * 100).toFixed(2)}%</td>
-                  <td className="p-3 text-slate-300">{row.score} / 100</td>
-                  <td className="p-3">
-                    <RiskBadge level={row.level} />
-                  </td>
-                  <td className="p-3 text-cyan-400">{row.latency}</td>
+          {recentDetections.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs font-mono">
+              No live network flows detected in current session yet.
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs font-mono text-slate-300">
+              <thead className="bg-white/[0.02] text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+                <tr>
+                  <th className="p-3">Flow ID</th>
+                  <th className="p-3">Timestamp</th>
+                  <th className="p-3">Predicted Attack</th>
+                  <th className="p-3">Confidence</th>
+                  <th className="p-3">Risk Score</th>
+                  <th className="p-3">Severity Level</th>
+                  <th className="p-3">Latency</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {recentDetections.map((row) => (
+                  <tr key={row.id} className="hover:bg-white/[0.04] transition-colors">
+                    <td className="p-3 font-semibold text-slate-400">{row.id}</td>
+                    <td className="p-3 text-slate-400">{row.timestamp}</td>
+                    <td className="p-3 font-bold text-white">{row.attack}</td>
+                    <td className="p-3 text-emerald-400">{(row.confidence * 100).toFixed(2)}%</td>
+                    <td className="p-3 text-slate-300">{row.score} / 100</td>
+                    <td className="p-3">
+                      <RiskBadge level={row.level} />
+                    </td>
+                    <td className="p-3 text-cyan-400">{row.latency}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </motion.div>

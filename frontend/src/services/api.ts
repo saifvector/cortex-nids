@@ -87,4 +87,28 @@ export const apiService = {
     const res = await apiClient.get<any>('/alerts/daily_report');
     return res.data;
   },
+
+  // GET /analytics/summary
+  getHistoricalSummary: async (): Promise<any> => {
+    const res = await apiClient.get<any>('/analytics/summary');
+    return res.data;
+  },
+
+  // GET /analytics/trends
+  getHistoricalTrends: async (timeRange: string = 'all'): Promise<any[]> => {
+    const res = await apiClient.get<any[]>('/analytics/trends', { params: { time_range: timeRange } });
+    return res.data;
+  },
+
+  // GET /analytics/top-attacks
+  getHistoricalTopAttacks: async (limit: number = 10): Promise<any[]> => {
+    const res = await apiClient.get<any[]>('/analytics/top-attacks', { params: { limit } });
+    return res.data;
+  },
+
+  // GET /analytics/severity
+  getHistoricalSeverity: async (): Promise<Record<string, number>> => {
+    const res = await apiClient.get<Record<string, number>>('/analytics/severity');
+    return res.data;
+  },
 };

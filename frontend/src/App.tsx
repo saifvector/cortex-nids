@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './pages/Dashboard';
 import { ThreatMonitor } from './pages/ThreatMonitor';
+import { HistoricalAnalytics } from './pages/HistoricalAnalytics';
 import { Prediction } from './pages/Prediction';
 import { BatchAnalysis } from './pages/BatchAnalysis';
 import { Analytics } from './pages/Analytics';
@@ -36,9 +37,10 @@ export const App: React.FC = () => {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/monitor" element={<ThreatMonitor />} />
+                <Route path="/analytics" element={<HistoricalAnalytics />} />
+                <Route path="/historical" element={<HistoricalAnalytics />} />
                 <Route path="/predict" element={<Prediction />} />
                 <Route path="/batch" element={<BatchAnalysis />} />
-                <Route path="/analytics" element={<Analytics />} />
                 <Route path="/features" element={<FeatureImportance />} />
                 <Route path="/model" element={<ModelInsights />} />
                 <Route path="/reports" element={<Reports />} />

@@ -17,11 +17,11 @@ import {
 
 export const Sidebar: React.FC = () => {
   const navItems = [
-    { to: '/', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { to: '/', label: 'Dashboard (Live)', icon: <LayoutDashboard className="w-4 h-4" /> },
     { to: '/monitor', label: 'Threat Monitor', icon: <Activity className="w-4 h-4" /> },
+    { to: '/analytics', label: 'Historical Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { to: '/predict', label: 'Single Prediction', icon: <ShieldAlert className="w-4 h-4" /> },
     { to: '/batch', label: 'Batch Analysis', icon: <UploadCloud className="w-4 h-4" /> },
-    { to: '/analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { to: '/features', label: 'Feature Importance', icon: <Layers className="w-4 h-4" /> },
     { to: '/model', label: 'Model Insights', icon: <Cpu className="w-4 h-4" /> },
     { to: '/reports', label: 'Reports', icon: <FileText className="w-4 h-4" /> },

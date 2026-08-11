@@ -122,7 +122,7 @@ class LiveMonitor:
             # Predict using Module 8 Predictor
             pred_result = self.predictor.predict_single(flow_feats)
 
-            # Store Alert to SQLite (source of truth for metrics)
+            # Store Alert to SQLite (source of truth for historical records)
             alert_event = self.alert_engine.process_prediction(
                 prediction_result=pred_result,
                 src_ip=src_ip,
@@ -130,6 +130,28 @@ class LiveMonitor:
                 protocol=protocol,
                 dst_port=dst_port
             )
+
+            # Notify FastAPI session metrics manager
+            try:
+                import json
+                import urllib.request
+                payload = json.dumps({
+                    "attack_type": pred_result.get("Attack_Type", "BENIGN"),
+                    "confidence": float(pred_result.get("Prediction_Confidence", 0.99)),
+                    "risk_score": float(pred_result.get("Risk_Score", 0.0)),
+                    "risk_level": pred_result.get("Risk_Level", "Low"),
+                    "latency_ms": float(pred_result.get("Prediction_Time_ms", 0.035)),
+                    "count": 1
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    "http://localhost:8000/metrics/record",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                urllib.request.urlopen(req, timeout=1.0)
+            except Exception:
+                pass
 
             # Broadcast WebSocket event asynchronously
             try:
