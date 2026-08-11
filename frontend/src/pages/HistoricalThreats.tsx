@@ -63,6 +63,16 @@ export const HistoricalThreats: React.FC = () => {
 
   useEffect(() => {
     fetchThreatArchive();
+
+    const handleGlobalRefresh = () => {
+      fetchThreatArchive();
+    };
+
+    window.addEventListener('cortex-nids-refresh', handleGlobalRefresh);
+
+    return () => {
+      window.removeEventListener('cortex-nids-refresh', handleGlobalRefresh);
+    };
   }, [page, timeRange, riskFilter, attackFilter]);
 
   // Debounced search trigger

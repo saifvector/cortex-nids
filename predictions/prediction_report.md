@@ -13,7 +13,7 @@
 - **Total Records Predicted**: `2`
 - **Average Prediction Confidence**: `0.9895`
 - **Average Risk Score**: `0.21 / 100`
-- **Average Latency**: `9.757 ms / record`
+- **Average Latency**: `9.934 ms / record`
 
 ---
 

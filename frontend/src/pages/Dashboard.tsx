@@ -41,7 +41,17 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchSessionTelemetry();
     const interval = setInterval(fetchSessionTelemetry, 3000);
-    return () => clearInterval(interval);
+
+    const handleGlobalRefresh = () => {
+      fetchSessionTelemetry();
+    };
+
+    window.addEventListener('cortex-nids-refresh', handleGlobalRefresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('cortex-nids-refresh', handleGlobalRefresh);
+    };
   }, []);
 
   if (loading) {
