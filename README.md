@@ -29,7 +29,7 @@ Powered by a **LightGBM Classifier Engine (`99.87%` accuracy, `<15ms` latency)**
 
 ---
 
-## 💻 CortexAgent.exe — Standalone Desktop App
+## CortexAgent.exe — Standalone Desktop App
 
 `CortexAgent.exe` is a single-file, 147MB Windows executable designed for zero-config deployment on endpoint machines.
 
@@ -38,16 +38,16 @@ CORTEX AGENT — Enterprise Network Threat Detection
 [Dashboard]  [Monitoring]  [Threat Lab]  [Detection Logs]  [Settings]  [About]
 
 REAL-TIME DETECTION CONSOLE
-[14:00:15] [FLOW ] Flow [brave.exe] [172.16.0.110 -> :443] | BENIGN | Confidence: 99.6% | 13.4ms
-[14:00:22] [THREAT] 🚨 ALERT [Critical]: DoS GoldenEye | Risk: 88.4/100 | Latency: 11.2ms
-[14:00:25] [FLOW ] Flow [Code - Insiders.exe] [172.16.0.36 -> :80] | BENIGN | Confidence: 98.7% | 12.1ms
+[14:00:15] [FLOW ]  Flow [brave.exe] [172.16.0.110 -> :443] | BENIGN | Confidence: 99.6% | 13.4ms
+[14:00:22] [THREAT] ALERT [Critical]: DoS GoldenEye | Risk: 88.4/100 | Latency: 11.2ms
+[14:00:25] [FLOW ]  Flow [Code - Insiders.exe] [172.16.0.36 -> :80] | BENIGN | Confidence: 98.7% | 12.1ms
 ```
 
 ### Key Desktop Capabilities:
-* 📡 **Mode 1: Live Packet Monitor**: Sniffs real network traffic from active network adapters, computes 20-feature 5-tuple flow metrics, and streams predictions in `<15ms`.
-* ⚡ **Mode 2: Threat Validation Laboratory**: Generates calibrated attack vectors (**DoS GoldenEye**, **DDoS**, **PortScan**, **Botnet C2**) to benchmark and test detection accuracy on-demand.
-* 🔎 **Automatic Windows Process Name Resolution**: Uses real-time kernel socket table lookups (`psutil.net_connections`) to match network flows to responsible active executables (`[brave.exe]`, `[chrome.exe]`, `[msedge.exe]`, `[Code.exe]`, `[svchost.exe]`, `[git.exe]`).
-* ☁️ **Cloud Synchronization**: Posts detected security incidents live to the Railway backend API and streams them instantly to the Vercel web console over WebSockets.
+* **Mode 1: Live Packet Monitor**: Sniffs real network traffic from active network adapters, computes 20-feature 5-tuple flow metrics, and streams predictions in `<15ms`.
+* **Mode 2: Threat Validation Laboratory**: Generates calibrated attack vectors (**DoS GoldenEye**, **DDoS**, **PortScan**, **Botnet C2**) to benchmark and test detection accuracy on-demand.
+* **Automatic Windows Process Name Resolution**: Uses real-time kernel socket table lookups (`psutil.net_connections`) to match network flows to responsible active executables (`[brave.exe]`, `[chrome.exe]`, `[msedge.exe]`, `[Code.exe]`, `[svchost.exe]`, `[git.exe]`).
+* **Cloud Synchronization**: Posts detected security incidents live to the Railway backend API and streams them instantly to the Vercel web console over WebSockets.
 
 ---
 
@@ -66,7 +66,7 @@ REAL-TIME DETECTION CONSOLE
 
 ---
 
-## 🌐 Live Cloud Deployment Architecture
+## Live Cloud Deployment Architecture
 
 ```mermaid
 flowchart TD
@@ -115,10 +115,10 @@ You can test live intrusion detection using either the **Standalone Desktop Appl
 1. **Launch Executable**:
    Double-click **`dist/CortexAgent.exe`** (or run `.\.venv\Scripts\python.exe agent/cortex_agent.py`).
 2. **Start Monitoring**:
-   Click **`📡 Monitoring`** -> **`▶ Start Monitoring`**.
+   Click **` Monitoring`** -> **`▶ Start Monitoring`**.
    *Open Brave, Chrome, or VS Code to observe live process-attributed network traffic.*
 3. **Run Threat Test**:
-   Click **`⚡ Threat Lab`** -> Select **`DoS GoldenEye Flood`** or **`DDoS Attack Vector`** -> Click **`⚡ Start Simulation`**.
+   Click **` Threat Lab`** -> Select **`DoS GoldenEye Flood`** or **`DDoS Attack Vector`** -> Click **` Start Simulation`**.
    *Watch red threat alerts stream live on both the desktop console and the public Vercel website!*
 
 ---
