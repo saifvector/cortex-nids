@@ -8,12 +8,12 @@
   <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/LightGBM-99.87%25_Accuracy-FF6F00?style=for-the-badge&logo=scikitlearn&logoColor=white" alt="LightGBM" />
-  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/CortexAgent-Standalone_EXE-0052CC?style=for-the-badge&logo=windows&logoColor=white" alt="CortexAgent.exe" />
   <img src="https://img.shields.io/badge/Tests-70%2F70_Pass-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="Tests" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" />
 </p>
 
-[**Live Repo**](https://github.com/saifvector/cortex-nids) • [**Interactive API Docs**](http://localhost:8000/docs) • [**Quick Start**](#quick-start--installation) • [**Live Telemetry Guide**](#live-telemetry--traffic-testing-guide)
+[**Live Website**](https://cortex-nids.vercel.app) • [**Live Cloud API**](https://web-production-31259.up.railway.app/health) • [**GitHub Repository**](https://github.com/saifvector/cortex-nids) • [**Quick Start**](#quick-start--installation) • [**Desktop Agent Guide**](#cortexagentexe---standalone-desktop-app)
 
 ---
 
@@ -23,7 +23,33 @@
 
 **Cortex NIDS** is an enterprise-class, machine learning-powered Security Operations Center (SOC) platform designed to sniff, classify, score, and neutralize high-throughput network threats in real time. 
 
-Powered by a **LightGBM Classifier Engine (`99.87%` accuracy, `20.4ms` latency)** trained on 2.83M CICIDS2017 flow samples, Cortex NIDS transforms raw network packet streams into actionable security intelligence with automated SOAR firewall responses, SIEM log streaming (Elastic/Splunk/Sentinel), and a futuristic **React 18 Liquid Glass Dashboard**.
+Powered by a **LightGBM Classifier Engine (`99.87%` accuracy, `<15ms` latency)** trained on 2.83M CICIDS2017 flow samples, Cortex NIDS combines:
+1. **Live Cloud Platform (Vercel + Railway)**: Real-time WebSockets threat streaming, analytical heatmaps, and downloadable PDF security audit reports.
+2. **Standalone Desktop Agent (`CortexAgent.exe`)**: Desktop GUI with real-time socket packet sniffing, live Windows process identification (`[brave.exe]`, `[Code.exe]`, `[svchost.exe]`), and a built-in **Threat Validation Laboratory**.
+
+---
+
+## 💻 CortexAgent.exe — Standalone Desktop App
+
+`CortexAgent.exe` is a single-file, 147MB Windows executable designed for zero-config deployment on endpoint machines.
+
+```text
++-----------------------------------------------------------------------------------------+
+|  CORTEX AGENT — Enterprise Network Threat Detection                                     |
+|  [Dashboard]  [Monitoring]  [Threat Lab]  [Detection Logs]  [Settings]  [About]           |
+|                                                                                         |
+|  REAL-TIME DETECTION CONSOLE                                                             |
+|  [14:00:15] [FLOW ] Flow [brave.exe] [172.16.0.110 -> :443] | BENIGN | 99.6% | 13.4ms    |
+|  [14:00:22] [THREAT] 🚨 ALERT [Critical]: DoS GoldenEye | Risk: 88.4/100 | 11.2ms           |
+|  [14:00:25] [FLOW ] Flow [Code - Insiders.exe] [172.16.0.36 -> :80] | BENIGN | 98.7%   |
++-----------------------------------------------------------------------------------------+
+```
+
+### Key Desktop Capabilities:
+* 📡 **Mode 1: Live Packet Monitor**: Sniffs real network traffic from active network adapters, computes 20-feature 5-tuple flow metrics, and streams predictions in `<15ms`.
+* ⚡ **Mode 2: Threat Validation Laboratory**: Generates calibrated attack vectors (**DoS GoldenEye**, **DDoS**, **PortScan**, **Botnet C2**) to benchmark and test detection accuracy on-demand.
+* 🔎 **Automatic Windows Process Name Resolution**: Uses real-time kernel socket table lookups (`psutil.net_connections`) to match network flows to responsible active executables (`[brave.exe]`, `[chrome.exe]`, `[msedge.exe]`, `[Code.exe]`, `[svchost.exe]`, `[git.exe]`).
+* ☁️ **Cloud Synchronization**: Posts detected security incidents live to the Railway backend API and streams them instantly to the Vercel web console over WebSockets.
 
 ---
 
@@ -31,146 +57,87 @@ Powered by a **LightGBM Classifier Engine (`99.87%` accuracy, `20.4ms` latency)*
 
 | Feature Module | Description | Technical Implementation |
 | :--- | :--- | :--- |
+| **Cortex Desktop Agent** | Standalone executable GUI with socket sniffing & process resolution. | CustomTkinter + PyInstaller (`147MB`) |
 | **Live Threat Monitor** | Sub-second real-time WebSocket alert stream with animated threat cards. | Scapy Sniffer + `/ws/alerts` WebSockets |
 | **ML Prediction Engine** | 15-class intrusion classifier scoring risk levels (`Low` to `Critical`). | LightGBM + Joblib Pipeline |
-| **Historical Threats Archive** | Permanent SQLite threat database (`alerts.db`) with full search & modal inspection. | SQLite + SQLAlchemy + Dynamic Filters |
+| **Process Identification**| Matches network flows to local Windows executables (`[brave.exe]`, `[Code.exe]`). | Kernel Socket Matching (`psutil`) |
+| **Historical Archive** | Permanent SQLite threat database (`alerts.db`) with full search & modal inspection. | SQLite + SQLAlchemy + Dynamic Filters |
 | **Historical Analytics** | Threat trend timelines, attack pie charts, and top attacker IP heatmaps. | Recharts + Analytical Queries |
 | **Dynamic Report Engine** | Compiles on-demand **PDF**, **HTML**, **CSV**, and **Markdown** security audit reports. | ReportLab + Dynamic Pandas Exporter |
 | **Global System Search** | Instant modal search matching IPs, Attack Types, Alert IDs, Ports, and Modules. | `GET /search` + `⌘K` / `Ctrl+K` Hotkey |
-| **SOC Notification Center** | Real-time WebSocket alert notifications with unread counter badges. | NotificationStore + Slide-Over Drawer |
-| **Explainable AI (XAI)** | Live feature importance rankings extracted directly from trained model checkpoints. | `model.feature_importances_` + Recharts |
 
 ---
 
-## Architectural Navigation & Data Flow
-
-Cortex NIDS completely decouples **LIVE Session Telemetry** from **HISTORICAL Database Archives**:
-
-| Module Category | Navigation Target | Primary Data Source | Scope & Purpose |
-| :--- | :--- | :--- | :--- |
-| **Dashboard** | `/` | In-Memory (`SessionMetrics`) | **LIVE Session Telemetry** (Resets on server restart) |
-| **Live Threats** | `/live-threats` | WebSocket (`/ws/alerts`) | **Real-Time Alert Stream** (Sub-second animated cards) |
-| **Historical Threats** | `/historical-threats` | SQLite (`alerts.db`) | **Permanent Threat Archive** (Multi-filter search & modal) |
-| **Historical Analytics** | `/analytics` | SQLite (`alerts.db`) | **Cumulative Trends** & Attacker IP Heatmaps |
-| **Reports Center** | `/reports` | Dynamic `alerts.db` Engine | **On-Demand Report Export** (PDF, HTML, CSV, Markdown) |
-| **Single Predictor** | `/predict` | ML Pipeline (`LightGBM`) | **Single-Flow ML Inference Sandbox** |
-| **Batch Analysis** | `/batch` | ML Pipeline (`LightGBM`) | **Bulk CSV Network Traffic Classification** |
-| **Feature Importance**| `/features` | Model Checkpoint Object | **Live XAI Model Feature Importance Rankings** |
+## 🌐 Live Cloud Deployment Architecture
 
 ```mermaid
 flowchart TD
-    subgraph Capture["Packet Capture & Telemetry"]
-        A1["Scapy Live Packet Sniffer"]
-        A2["Synthetic Attack Simulator"]
-        A3["Flow Builder (5-Tuple)"]
-        A1 --> A3
-        A2 --> A3
+    subgraph Desktop["Endpoint Environment"]
+        D1["CortexAgent.exe / Live Sniffer"]
+        D2["Windows Kernel Socket Table (psutil)"]
+        D3["Threat Validation Lab"]
+        D2 --> D1
+        D3 --> D1
     end
 
-    subgraph ML["Machine Learning & Inference"]
-        B1["20-Feature Extractor & Scaler"]
-        B2["LightGBM Classifier Engine"]
-        B3["Risk Score & Severity Evaluator"]
-        A3 --> B1
-        B1 --> B2
-        B2 --> B3
-    end
-
-    subgraph Core["FastAPI Core & Storage"]
-        C1["FastAPI Application Server"]
-        C2["SQLite Archive (alerts.db)"]
-        C3["Session Metrics Manager"]
-        C4["WebSocket Broadcast Stream"]
-        B3 --> C1
-        C1 --> C2
-        C1 --> C3
-        C1 --> C4
-    end
-
-    subgraph UI["SOC Dashboard & Integrations"]
-        D1["React 18 Liquid Glass UI"]
-        D2["SIEM Connectors (CEF/LEEF)"]
-        D3["SOAR Firewall Response"]
-        C4 --> D1
-        C1 --> D2
-        C1 --> D3
+    subgraph Cloud["Production Cloud Infrastructure"]
+        API["Railway Backend API (FastAPI)"]
+        DB[(Railway SQLite Archive)]
+        WS["WebSocket Broadcast Engine"]
+        WEB["Vercel Frontend UI (React 18)"]
+        
+        D1 -- "POST /alerts/record" --> API
+        API --> DB
+        API --> WS
+        WS -- "Sub-second Stream" --> WEB
     end
 ```
+
+---
+
+## Application Access Points
+
+| Service | Access URL | Description |
+| :--- | :--- | :--- |
+| **Vercel Web App** | [https://cortex-nids.vercel.app](https://cortex-nids.vercel.app) | Live Production Liquid Glass SOC Platform |
+| **Live Threat Stream** | [https://cortex-nids.vercel.app/live-threats](https://cortex-nids.vercel.app/live-threats) | Real-time WebSocket Threat Monitor |
+| **Railway API Health** | [https://web-production-31259.up.railway.app/health](https://web-production-31259.up.railway.app/health) | Production FastAPI Cloud API Endpoint |
+| **Desktop Executable** | [`dist/CortexAgent.exe`](file:///c:/Users/saifu/Desktop/Network%20Intrusion%20Detection/dist/CortexAgent.exe) | Standalone Windows GUI Security Agent (`147MB`) |
+| **Local React UI** | [http://localhost:3000](http://localhost:3000) | Local Development React Platform |
+| **Local FastAPI Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | Interactive OpenAPI Swagger Reference |
 
 ---
 
 ## Live Telemetry & Traffic Testing Guide
 
-You can test live intrusion detection using either **Real Packet Capture Sniffing** or **Synthetic Attack Simulation**.
+You can test live intrusion detection using either the **Standalone Desktop Application**, **Real Packet Sniffing**, or **Synthetic Attack Simulation**.
 
-### Step 1: Launch Backend & Frontend Servers
+### Method 1: Standalone Desktop Agent (`CortexAgent.exe`)
 
-**Terminal 1 (Backend API)**:
-```powershell
-.\.venv\Scripts\python.exe scripts/run_api.py
-```
-
-**Terminal 2 (React Frontend UI)**:
-```powershell
-npm --prefix frontend run dev
-```
-
-*(Or launch both in 1-click using `powershell -ExecutionPolicy Bypass -File scripts\start_local.ps1`)*
+1. **Launch Executable**:
+   Double-click **`dist/CortexAgent.exe`** (or run `.\.venv\Scripts\python.exe agent/cortex_agent.py`).
+2. **Start Monitoring**:
+   Click **`📡 Monitoring`** -> **`▶ Start Monitoring`**.
+   *Open Brave, Chrome, or VS Code to observe live process-attributed network traffic.*
+3. **Run Threat Test**:
+   Click **`⚡ Threat Lab`** -> Select **`DoS GoldenEye Flood`** or **`DDoS Attack Vector`** -> Click **`⚡ Start Simulation`**.
+   *Watch red threat alerts stream live on both the desktop console and the public Vercel website!*
 
 ---
 
-### Step 2: Choose Live Traffic Test Method
-
-#### Method A: Real Packet Capture Sniffer (`scripts/run_live_monitor.py`)
-Sniffs real network packets directly from your Wi-Fi/Ethernet adapters using Scapy, builds 5-tuple flow statistics, executes ML inference, and logs alerts to `alerts.db` and the UI:
-
-1. **List Network Interfaces**:
-   ```powershell
-   .\.venv\Scripts\python.exe scripts/run_live_monitor.py --list-ifaces
-   ```
-
-2. **Start Continuous Live Packet Monitoring**:
-   ```powershell
-   .\.venv\Scripts\python.exe scripts/run_live_monitor.py --duration 0
-   ```
-
-3. **Generate Real Traffic (e.g., Ping Google or Web Browsing)**:
-   In a separate terminal, trigger real ICMP/HTTP network traffic:
-   ```powershell
-   # Ping Google continuously to generate live network flow packets
-   ping google.com -t
-   ```
-   Or send HTTP GET requests:
-   ```powershell
-   curl https://google.com
-   ```
-   *Watch `run_live_monitor.py` capture the live ICMP/TCP packets, extract features, predict risk, and stream alerts live to the dashboard!*
-
----
-
-#### Method B: Synthetic Threat Generator (`scripts/simulate_live_attacks.py`)
-Generates realistic statistical attack profiles (DoS, DDoS, PortScan, Benign) and posts prediction telemetry directly to the API & WebSockets every second:
+### Method 2: Synthetic Threat Generator CLI (`scripts/simulate_live_attacks.py`)
 
 ```powershell
-# Stream live threat traffic every 1.0 second continuously
+# Stream live threat traffic every 1.0 second continuously to Cloud Backend
 .\.venv\Scripts\python.exe scripts/simulate_live_attacks.py --interval 1.0 --duration 0
 ```
 
-| Profile Name | Weight | Target Protocol | Description |
-| :--- | :---: | :--- | :--- |
-| **BENIGN** | `70%` | HTTP (80/443), DNS (53) | Clean web browsing & name resolution traffic. |
-| **DoS GoldenEye** | `10%` | HTTP (80/443) | High packet-volume HTTP Denial-of-Service attack. |
-| **DDoS** | `10%` | TCP (80/8080/22) | Massive bandwidth Distributed Denial-of-Service. |
-| **PortScan** | `10%` | Multi-Port Probes | Rapid single-packet scanning across ports 21–8443. |
-
----
-
-### Step 3: Observe Live Telemetry in UI
-
-1. Open **[`http://localhost:3000/live-threats`](http://localhost:3000/live-threats)**: Watch incoming threat cards stream live via WebSockets.
-2. Open **[`http://localhost:3000/`](http://localhost:3000/)**: Watch session prediction counters, attack rates, and risk meters increase in real time.
-3. Open **[`http://localhost:3000/historical-threats`](http://localhost:3000/historical-threats)**: Inspect permanent records stored in `alerts.db`.
-4. Press **`⌘K`** or **`Ctrl+K`**: Search for `DDoS`, `PortScan`, or specific IPs across the entire platform.
+| Profile Name | Target Protocol | Description |
+| :--- | :--- | :--- |
+| **BENIGN** | HTTP (80/443), DNS (53) | Clean web browsing & name resolution traffic. |
+| **DoS GoldenEye** | HTTP (80/443) | High packet-volume HTTP Denial-of-Service attack. |
+| **DDoS** | TCP (80/8080/22) | Volumetric Distributed Denial-of-Service attack. |
+| **PortScan** | Multi-Port Probes | Rapid single-packet scanning across ports 21–8443. |
 
 ---
 
@@ -196,29 +163,12 @@ chmod +x setup.sh && ./setup.sh
 
 ---
 
-### Option 2: Docker Containerized Deployment
+### Option 2: Build Desktop Executable (`CortexAgent.exe`)
 
 ```powershell
-# Core Stack (Backend + Frontend)
-docker compose -f docker-compose.local.yml up -d --build
-
-# Full Production Stack (Backend + Frontend + Prometheus + Grafana)
-docker compose up -d --build
+# Package standalone Windows desktop binary using PyInstaller
+.\.venv\Scripts\python.exe scripts/build_agent.py
 ```
-
----
-
-## Application Access Points
-
-| Service | Access URL | Description |
-| :--- | :--- | :--- |
-| **React SOC Dashboard** | [http://localhost:3000](http://localhost:3000) | $100M Liquid Glass Security Operations Platform |
-| **Live Threat Stream** | [http://localhost:3000/live-threats](http://localhost:3000/live-threats) | Real-time WebSocket Threat Monitor |
-| **Historical Threats Archive** | [http://localhost:3000/historical-threats](http://localhost:3000/historical-threats) | SQLite `alerts.db` Permanent Searchable Archive |
-| **FastAPI REST API** | [http://localhost:8000](http://localhost:8000) | Sub-millisecond ML Prediction API |
-| **Interactive API Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | Swagger OpenAPI Reference |
-| **Prometheus Metrics** | [http://localhost:9090](http://localhost:9090) | Operational metric scraping |
-| **Grafana Visualizer** | [http://localhost:3001](http://localhost:3001) | Real-time infrastructure monitoring |
 
 ---
 
@@ -230,7 +180,7 @@ The system is trained on **2,830,743 network traffic records** from the benchmar
 
 | Classifier Model | Accuracy | Precision | Recall | F1-Score | Inference Latency |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **LightGBM (Primary)** | **99.87%** | **0.9984** | **0.9987** | **0.9005** | **20.4 ms** |
+| **LightGBM (Primary)** | **99.87%** | **0.9984** | **0.9987** | **0.9005** | **< 15 ms** |
 | XGBoost | 99.84% | 0.9981 | 0.9984 | 0.8980 | 32.1 ms |
 | CatBoost | 99.82% | 0.9979 | 0.9982 | 0.8950 | 45.0 ms |
 | Random Forest | 99.79% | 0.9975 | 0.9979 | 0.8910 | 58.2 ms |
@@ -243,11 +193,6 @@ Run the full automated test suite (70 test cases, 100% pass rate):
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests/
-```
-
-Or run the QA suite runner:
-```powershell
-.\.venv\Scripts\python.exe scripts/run_tests.py
 ```
 
 ```text
