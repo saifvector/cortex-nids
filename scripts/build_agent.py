@@ -21,6 +21,8 @@ def build_cortex_agent():
     if not pyinstaller_bin.exists():
         pyinstaller_bin = "pyinstaller"
 
+    icon_path = PROJECT_ROOT / "agent" / "assets" / "cortex_icon.ico"
+
     cmd = [
         str(pyinstaller_bin),
         "--noconfirm",
@@ -28,11 +30,43 @@ def build_cortex_agent():
         "--onefile",
         "--windowed",
         "--name", "CortexAgent",
+        "--icon", str(icon_path) if icon_path.exists() else "",
+        "--collect-all", "customtkinter",
+        "--collect-all", "lightgbm",
+        "--collect-all", "psutil",
+        "--collect-all", "src",
+        "--hidden-import", "psutil",
+        "--hidden-import", "src",
+        "--hidden-import", "src.encoding",
+        "--hidden-import", "src.preprocessing",
+        "--hidden-import", "src.scaling",
+        "--hidden-import", "src.feature_selection",
+        "--hidden-import", "src.data_loader",
+        "--hidden-import", "src.data_validator",
+        "--hidden-import", "src.evaluator",
+        "--hidden-import", "src.predictor",
+        "--hidden-import", "src.model_loader",
+        "--hidden-import", "src.inference_pipeline",
+        "--hidden-import", "src.prediction_service",
+        "--hidden-import", "src.alert_engine",
+        "--hidden-import", "src.packet_capture",
+        "--hidden-import", "src.flow_builder",
+        "--hidden-import", "src.exceptions.custom_exceptions",
+        "--hidden-import", "sklearn",
+        "--hidden-import", "sklearn.ensemble",
+        "--hidden-import", "sklearn.preprocessing",
+        "--hidden-import", "joblib",
         "--add-data", f"{PROJECT_ROOT / 'models' / 'best_model.joblib'};models",
+        "--add-data", f"{PROJECT_ROOT / 'models' / 'metadata.json'};models",
         "--add-data", f"{PROJECT_ROOT / 'data' / 'processed' / 'feature_names.json'};data/processed",
         "--add-data", f"{PROJECT_ROOT / 'data' / 'processed' / 'preprocessing_pipeline.joblib'};data/processed",
+        "--add-data", f"{PROJECT_ROOT / 'agent' / 'assets'};agent/assets",
         str(PROJECT_ROOT / "agent" / "main.py")
     ]
+
+    # Remove empty --icon argument if icon doesn't exist
+    if not icon_path.exists():
+        cmd = [c for c in cmd if c != "--icon" and c != ""]
 
     logging.info("Executing PyInstaller build command:")
     logging.info(" ".join(cmd))

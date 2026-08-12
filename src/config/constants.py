@@ -3,10 +3,16 @@ Constants configuration file.
 Defines system-wide immutable constants used across NIDS modules.
 """
 import os
+import sys
 from pathlib import Path
 
-# Project paths
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+# Project paths — PyInstaller-aware resolution
+# When frozen (running as .exe), bundled data files live under sys._MEIPASS.
+# When running from source, resolve relative to this file's location.
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    PROJECT_ROOT = Path(sys._MEIPASS)
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Default settings files
 DEFAULT_CONFIG_DIR = PROJECT_ROOT / "config"

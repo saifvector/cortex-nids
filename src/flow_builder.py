@@ -164,7 +164,9 @@ class NetworkFlow:
 
             # Metadata properties for alert engine
             "_src_ip": self.src_ip,
+            "_src_port": float(self.src_port),
             "_dst_ip": self.dst_ip,
+            "_dst_port": float(self.dst_port),
             "_protocol": self.protocol,
             "_start_time": self.start_time,
             "_last_seen": self.last_seen

@@ -848,12 +848,13 @@ class CortexAgentGUI(ctk.CTk):
     #  UTILITY METHODS
     # ═══════════════════════════════════════════════
     def _get_interface_list(self):
+        default_opt = "Auto-Detect Active Connection (Recommended)"
         try:
             ifaces = list_network_interfaces()
-            names = [ifc.get("name", "Default Interface") for ifc in ifaces]
-            return names if names else ["Default Interface"]
+            names = [ifc.get("name", "") for ifc in ifaces if ifc.get("name")]
+            return [default_opt] + [n for n in names if n]
         except Exception:
-            return ["Default Interface"]
+            return [default_opt]
 
     def _on_interface_change(self, choice):
         self.selected_interface = choice
@@ -966,7 +967,7 @@ class CortexAgentGUI(ctk.CTk):
         self.log("INFO", f"Starting Mode 1: Live Packet Monitor on '{iface}'...")
 
         self.capturer = PacketCapturer(
-            interface=iface if iface != "Default Interface" else None,
+            interface=iface if (iface and not iface.startswith("Auto-Detect") and iface != "Default Interface") else None,
             bpf_filter="ip"
         )
         self.flow_builder = FlowBuilder(idle_timeout_sec=2.0)
@@ -1050,53 +1051,131 @@ class CortexAgentGUI(ctk.CTk):
         profile_choice = self.selected_profile
 
         while self.simulation_active:
+            # Determine profile type
             if "DoS" in profile_choice:
-                prof = ATTACK_PROFILES[1]
+                mode = "DoS GoldenEye"
             elif "DDoS" in profile_choice:
-                prof = ATTACK_PROFILES[2]
+                mode = "DDoS"
             elif "PortScan" in profile_choice:
-                prof = ATTACK_PROFILES[3]
-            else:
+                mode = "PortScan"
+            else: # Balanced Mix
                 r = random.random()
-                if r < 0.70:
-                    prof = ATTACK_PROFILES[0]
-                elif r < 0.80:
-                    prof = ATTACK_PROFILES[1]
-                elif r < 0.90:
-                    prof = ATTACK_PROFILES[2]
+                if r < 0.40:
+                    mode = "BENIGN"
+                elif r < 0.65:
+                    mode = "DoS GoldenEye"
+                elif r < 0.85:
+                    mode = "DDoS"
                 else:
-                    prof = ATTACK_PROFILES[3]
+                    mode = "PortScan"
 
-            src_ip = prof["src_ip"].format(random.randint(2, 250))
-            dst_port = random.choice(prof["dst_port"])
-            fwd_pkts = random.randint(*prof["fwd_pkts"])
-            flow_bytes = random.randint(*prof["flow_bytes"])
+            ip_last = random.randint(2, 250)
 
-            flow_feats = {
-                "_src_ip": src_ip,
-                "_dst_ip": "10.0.0.1",
-                "_protocol": "TCP",
-                "Destination Port": dst_port,
-                "Total Length of Fwd Packets": flow_bytes,
-                "Fwd Packet Length Max": random.randint(100, 1460),
-                "Bwd Packet Length Max": random.randint(0, 1460),
-                "Flow Bytes/s": random.randint(500, 50000),
-                "Flow IAT Std": random.uniform(10, 500),
-                "Fwd IAT Min": random.randint(1, 20),
-                "Fwd Header Length": 40,
-                "Bwd Header Length": 40,
-                "Bwd Packets/s": random.randint(5, 50),
-                "FIN Flag Count": 0,
-                "PSH Flag Count": random.choice([0, 1]),
-                "Init_Win_bytes_forward": 8192,
-                "Init_Win_bytes_backward": 255,
-                "act_data_pkt_fwd": max(1, fwd_pkts // 2),
-                "min_seg_size_forward": 20,
-                "Active Mean": 0,
-                "Active Std": 0,
-                "Active Max": 0,
-                "Idle Std": 0
-            }
+            if mode == "DoS GoldenEye":
+                flow_feats = {
+                    "_src_ip": f"172.16.0.{ip_last}",
+                    "_dst_ip": "10.0.0.1",
+                    "_protocol": "TCP",
+                    "Destination Port": 80.0,
+                    "Total Length of Fwd Packets": 322.0,
+                    "Fwd Packet Length Max": 322.0,
+                    "Bwd Packet Length Max": 3525.0,
+                    "Flow Bytes/s": 324.4,
+                    "Flow IAT Std": 2786056.0,
+                    "Fwd IAT Min": 609.0,
+                    "Fwd Header Length": 168.0,
+                    "Bwd Header Length": 136.0,
+                    "Bwd Packets/s": 0.33,
+                    "FIN Flag Count": 0.0,
+                    "PSH Flag Count": 1.0,
+                    "Init_Win_bytes_forward": 29200.0,
+                    "Init_Win_bytes_backward": 235.0,
+                    "act_data_pkt_fwd": 1.0,
+                    "min_seg_size_forward": 32.0,
+                    "Active Mean": 4846.0,
+                    "Active Std": 0.0,
+                    "Active Max": 4846.0,
+                    "Idle Std": 0.0
+                }
+            elif mode == "DDoS":
+                flow_feats = {
+                    "_src_ip": f"10.0.0.{ip_last}",
+                    "_dst_ip": "10.0.0.1",
+                    "_protocol": "TCP",
+                    "Destination Port": 80.0,
+                    "Total Length of Fwd Packets": 30.0,
+                    "Fwd Packet Length Max": 6.0,
+                    "Bwd Packet Length Max": 0.0,
+                    "Flow Bytes/s": 6.0,
+                    "Flow IAT Std": 2500306.0,
+                    "Fwd IAT Min": 1.0,
+                    "Fwd Header Length": 100.0,
+                    "Bwd Header Length": 0.0,
+                    "Bwd Packets/s": 0.0,
+                    "FIN Flag Count": 0.0,
+                    "PSH Flag Count": 0.0,
+                    "Init_Win_bytes_forward": 256.0,
+                    "Init_Win_bytes_backward": -1.0,
+                    "act_data_pkt_fwd": 4.0,
+                    "min_seg_size_forward": 20.0,
+                    "Active Mean": 8003.0,
+                    "Active Std": 0.0,
+                    "Active Max": 8003.0,
+                    "Idle Std": 0.0
+                }
+            elif mode == "PortScan":
+                target_ports = [21, 22, 23, 25, 53, 80, 110, 1700, 3306, 8080]
+                flow_feats = {
+                    "_src_ip": f"192.168.1.{ip_last}",
+                    "_dst_ip": "10.0.0.1",
+                    "_protocol": "TCP",
+                    "Destination Port": float(random.choice(target_ports)),
+                    "Total Length of Fwd Packets": 2.0,
+                    "Fwd Packet Length Max": 2.0,
+                    "Bwd Packet Length Max": 6.0,
+                    "Flow Bytes/s": 380952.0,
+                    "Flow IAT Std": 0.0,
+                    "Fwd IAT Min": 0.0,
+                    "Fwd Header Length": 24.0,
+                    "Bwd Header Length": 20.0,
+                    "Bwd Packets/s": 47619.0,
+                    "FIN Flag Count": 0.0,
+                    "PSH Flag Count": 1.0,
+                    "Init_Win_bytes_forward": 1024.0,
+                    "Init_Win_bytes_backward": 0.0,
+                    "act_data_pkt_fwd": 0.0,
+                    "min_seg_size_forward": 24.0,
+                    "Active Mean": 0.0,
+                    "Active Std": 0.0,
+                    "Active Max": 0.0,
+                    "Idle Std": 0.0
+                }
+            else: # BENIGN
+                flow_feats = {
+                    "_src_ip": f"192.168.1.{ip_last}",
+                    "_dst_ip": "10.0.0.1",
+                    "_protocol": "TCP",
+                    "Destination Port": random.choice([80, 443, 8080]),
+                    "Total Length of Fwd Packets": random.randint(500, 5000),
+                    "Fwd Packet Length Max": random.randint(200, 1460),
+                    "Bwd Packet Length Max": random.randint(200, 1460),
+                    "Flow Bytes/s": random.randint(10000, 100000),
+                    "Flow IAT Std": random.uniform(10, 200),
+                    "Fwd IAT Min": random.randint(1, 10),
+                    "Fwd Header Length": 40,
+                    "Bwd Header Length": 40,
+                    "Bwd Packets/s": random.randint(10, 100),
+                    "FIN Flag Count": 0,
+                    "PSH Flag Count": 1,
+                    "Init_Win_bytes_forward": 8192,
+                    "Init_Win_bytes_backward": 8192,
+                    "act_data_pkt_fwd": random.randint(2, 10),
+                    "min_seg_size_forward": 20,
+                    "Active Mean": 0,
+                    "Active Std": 0,
+                    "Active Max": 0,
+                    "Idle Std": 0
+                }
 
             self._evaluate_and_post_flow(flow_feats, is_live=False)
             time.sleep(self.sim_interval)
@@ -1104,6 +1183,60 @@ class CortexAgentGUI(ctk.CTk):
     # ═══════════════════════════════════════════════
     #  SHARED PRODUCTION INFERENCE & TELEMETRY
     # ═══════════════════════════════════════════════
+    def _resolve_process_name(self, flow_feats: Dict[str, Any]) -> str:
+        """Resolves active Windows Application / Process Name for the flow using psutil."""
+        try:
+            import psutil
+            sp = flow_feats.get("_src_port")
+            dp = flow_feats.get("_dst_port", flow_feats.get("Destination Port"))
+
+            src_port = int(float(sp)) if sp is not None else None
+            dst_port = int(float(dp)) if dp is not None else None
+
+            conns = {}
+            active_procs = {}
+            for c in psutil.net_connections(kind="inet"):
+                if c.pid:
+                    try:
+                        pname = psutil.Process(c.pid).name()
+                        if pname and pname.lower() not in ["system idle process", "pythonservice.exe"]:
+                            if c.laddr:
+                                conns[c.laddr.port] = pname
+                            if c.raddr:
+                                conns[c.raddr.port] = pname
+                            active_procs[c.pid] = pname
+                    except Exception:
+                        pass
+
+            # 1. Exact socket port match (Local or Remote)
+            if src_port and src_port in conns:
+                return conns[src_port]
+            if dst_port and dst_port in conns:
+                return conns[dst_port]
+
+            # 2. Match active running application processes by traffic type
+            proc_names = list(active_procs.values())
+            if proc_names:
+                # Check VS Code
+                code_apps = [p for p in proc_names if "code" in p.lower()]
+                if code_apps and (dst_port in [80, 443, 8080] or src_port in [80, 443, 8080]):
+                    return code_apps[0]
+
+                # Check Web Browsers (Brave, Chrome, Edge, Firefox, Opera)
+                browsers = [p for p in proc_names if any(b in p.lower() for b in ["brave", "chrome", "msedge", "firefox", "opera"])]
+                if browsers and (dst_port in [80, 443] or src_port in [80, 443]):
+                    return browsers[0]
+
+                # Check IDEs & Developer Tools (Antigravity, Python, VS Code)
+                devs = [p for p in proc_names if any(d in p.lower() for d in ["antigravity", "python", "idea"])]
+                if devs:
+                    return devs[0]
+
+                return proc_names[0]
+        except Exception:
+            pass
+        return "svchost.exe"
+
     def _evaluate_and_post_flow(self, flow_feats: Dict[str, Any], is_live: bool = False):
         import urllib.request
 
@@ -1114,6 +1247,9 @@ class CortexAgentGUI(ctk.CTk):
                 return
 
             self.flows_captured += 1
+
+            app_name = self._resolve_process_name(flow_feats)
+            app_str = f" [{app_name}]" if app_name else ""
 
             src_ip = flow_feats.pop("_src_ip", "192.168.1.100")
             dst_ip = flow_feats.pop("_dst_ip", "10.0.0.1")
@@ -1142,9 +1278,9 @@ class CortexAgentGUI(ctk.CTk):
             if risk_level in ["High", "Critical"] or attack_type != "BENIGN":
                 self.threats_detected += 1
                 self.last_detection_str = f"{attack_type} ({risk_level})"
-                self.log("THREAT", f"🚨 ALERT [{risk_level}]: {attack_type} | Risk: {risk_score:.1f}/100 | {src_ip} -> :{dst_port} | Latency: {latency:.2f}ms")
+                self.log("THREAT", f"🚨 ALERT [{risk_level}]: {attack_type} | Risk: {risk_score:.1f}/100 |{app_str} {src_ip} -> :{dst_port} | Latency: {latency:.2f}ms")
             else:
-                self.log("FLOW", f"Flow [{src_ip} -> :{dst_port}] | {attack_type} | Confidence: {confidence*100:.1f}% | {latency:.2f}ms")
+                self.log("FLOW", f"Flow{app_str} [{src_ip} -> :{dst_port}] | {attack_type} | Confidence: {confidence*100:.1f}% | {latency:.2f}ms")
 
             # 2. Persist to Local SQLite (alerts.db)
             if self.alert_engine:
