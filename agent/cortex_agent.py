@@ -1,6 +1,7 @@
 """
-CortexAgent Desktop Application Engine.
-Provides a GUI for Live Network Sniffing (Mode 1) and Threat Validation Lab (Mode 2).
+CortexAgent Desktop Application Engine — Premium SOC Dashboard.
+Provides a modern CustomTkinter GUI for Live Network Sniffing (Mode 1)
+and Threat Validation Lab (Mode 2).
 Reuses production LiveMonitor, PacketCapturer, FlowBuilder, and PredictionService.
 """
 import json
@@ -11,10 +12,11 @@ import sys
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
-import urllib.request
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+
+import customtkinter as ctk
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -30,314 +32,821 @@ from scripts.simulate_live_attacks import ATTACK_PROFILES
 
 logger = logging.getLogger("CortexAgent")
 
+# ─────────────────────────────────────────────────
+# COLOR PALETTE — Enterprise SOC Dark Theme
+# ─────────────────────────────────────────────────
+BG_DARK      = "#0A0E17"
+BG_SIDEBAR   = "#0D1117"
+BG_CARD      = "#111827"
+BG_CARD_ALT  = "#151D2E"
+BG_INPUT     = "#1A2332"
+BORDER       = "#1E2C42"
+BORDER_LIGHT = "#2A3A54"
 
-class CortexAgentGUI:
-    def __init__(self, root: tk.Tk):
-        self.root = root
-        self.root.title("Cortex NIDS - Desktop Monitoring & Threat Validation Platform")
-        self.root.geometry("980x740")
-        self.root.minsize(900, 680)
-        self.root.configure(bg="#04070E")
+TEXT_WHITE   = "#F0F4F8"
+TEXT_MUTED   = "#8899A6"
+TEXT_DIM     = "#5C6B7D"
 
-        # Telemetry Counters
+CYAN         = "#06B6D4"
+CYAN_DARK    = "#0891B2"
+GREEN        = "#10B981"
+GREEN_DARK   = "#059669"
+RED          = "#EF4444"
+RED_DARK     = "#DC2626"
+ORANGE       = "#F59E0B"
+ORANGE_DARK  = "#D97706"
+BLUE         = "#3B82F6"
+PURPLE       = "#8B5CF6"
+PINK         = "#EC4899"
+
+
+class CortexAgentGUI(ctk.CTk):
+    """Premium SOC-style desktop application for Cortex NIDS."""
+
+    def __init__(self):
+        super().__init__()
+
+        # ── Window Configuration ──
+        self.title("CortexAgent — Enterprise Network Threat Detection")
+        self.geometry("1200x780")
+        self.minsize(1050, 700)
+        self.configure(fg_color=BG_DARK)
+
+        # Set appearance
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("dark-blue")
+
+        # ── Telemetry Counters ──
         self.flows_captured = 0
         self.predictions_made = 0
         self.threats_detected = 0
         self.total_confidence_sum = 0.0
-        self.last_detection_str = "None"
+        self.last_detection_str = "—"
         self.backend_online = False
 
-        # Mode States
+        # ── Mode States ──
         self.monitoring_active = False
         self.simulation_active = False
 
-        # Threads
+        # ── Threads ──
         self.monitor_thread = None
         self.flush_thread = None
         self.sim_thread = None
 
-        # Components
-        self.target_api_url = tk.StringVar(value="https://web-production-31259.up.railway.app")
-        self.selected_interface = tk.StringVar()
-        self.selected_profile = tk.StringVar(value="Balanced Mix (70% Benign, 30% Attack)")
-        self.sim_interval = tk.DoubleVar(value=0.5)
+        # ── Components ──
+        self.target_api_url = "https://web-production-31259.up.railway.app"
+        self.selected_interface = ""
+        self.selected_profile = "Balanced Mix"
+        self.sim_interval = 0.5
 
-        # Initialize Production ML Engines
+        # ── Production ML Engines ──
         self.prediction_service = None
         self.alert_engine = None
         self.capturer = None
         self.flow_builder = None
 
         self._init_production_engines()
-        self._build_ui()
+
+        # ── Navigation State ──
+        self.current_page = "dashboard"
+        self.nav_buttons = {}
+        self.pages = {}
+
+        # ── Build UI ──
+        self._build_layout()
         self._check_backend_health()
 
+        # ── Start clock update ──
+        self._update_clock()
+
+    # ═══════════════════════════════════════════════
+    #  PRODUCTION ML ENGINE INITIALIZATION
+    # ═══════════════════════════════════════════════
     def _init_production_engines(self):
+        self._init_error = None
         try:
-            db_dir = PROJECT_ROOT / "predictions"
-            db_dir.mkdir(exist_ok=True)
+            # For WRITABLE outputs (SQLite, predictions), use the EXE's directory,
+            # NOT sys._MEIPASS (which is a read-only temp extraction dir).
+            # Model files are READ from sys._MEIPASS automatically via ModelLoader/constants.py.
+            if getattr(sys, 'frozen', False):
+                exe_dir = Path(sys.executable).parent
+                db_dir = exe_dir / "predictions"
+            else:
+                db_dir = PROJECT_ROOT / "predictions"
+
+            db_dir.mkdir(parents=True, exist_ok=True)
+            logger.info("Writable output directory: %s", db_dir)
+
             self.alert_engine = AlertEngine(db_dir=db_dir)
+            logger.info("AlertEngine ready: SQLite at %s", self.alert_engine.sqlite_path)
+
             self.prediction_service = PredictionService(output_dir=db_dir)
+            logger.info("PredictionService initialized: model=%s, features=%d",
+                        self.prediction_service.model_name,
+                        len(self.prediction_service.feature_names))
+            logger.info("Predictor ready: %s", type(self.prediction_service.predictor).__name__)
+
             self.flow_builder = FlowBuilder(idle_timeout_sec=2.0)
         except Exception as e:
-            logger.error(f"Error initializing production ML engines: {e}")
+            self._init_error = str(e)
+            logger.error(f"Error initializing production ML engines: {e}", exc_info=True)
 
-    def _build_ui(self):
-        style = ttk.Style()
-        style.theme_use("clam")
+    # ═══════════════════════════════════════════════
+    #  MAIN LAYOUT BUILDER
+    # ═══════════════════════════════════════════════
+    def _build_layout(self):
+        # Grid: sidebar (col 0, fixed width) | content (col 1, expand)
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
-        # Custom Styling Colors
-        bg_dark = "#04070E"
-        card_bg = "#0B1220"
-        border_color = "#1E2C42"
-        text_white = "#F8FAFC"
-        accent_blue = "#3B82F6"
-        accent_cyan = "#06B6D4"
-        accent_green = "#10B981"
-        accent_red = "#F43F5E"
-        accent_orange = "#F59E0B"
+        self._build_sidebar()
+        self._build_content_area()
 
-        style.configure("TFrame", background=bg_dark)
-        style.configure("Card.TFrame", background=card_bg, relief="flat")
-        style.configure("TLabel", background=bg_dark, foreground=text_white, font=("Inter", 10))
-        style.configure("Card.TLabel", background=card_bg, foreground=text_white, font=("Inter", 10))
-        style.configure("Title.TLabel", background=bg_dark, foreground=text_white, font=("Inter", 14, "bold"))
-        style.configure("Header.TLabel", background=card_bg, foreground=accent_cyan, font=("Inter", 11, "bold"))
-        style.configure("StatNum.TLabel", background=card_bg, foreground=accent_cyan, font=("JetBrains Mono", 18, "bold"))
-        style.configure("StatLabel.TLabel", background=card_bg, foreground="#94A3B8", font=("Inter", 9))
+    # ═══════════════════════════════════════════════
+    #  LEFT SIDEBAR
+    # ═══════════════════════════════════════════════
+    def _build_sidebar(self):
+        sidebar = ctk.CTkFrame(self, width=220, corner_radius=0, fg_color=BG_SIDEBAR,
+                               border_width=1, border_color=BORDER)
+        sidebar.grid(row=0, column=0, sticky="nsew")
+        sidebar.grid_propagate(False)
 
-        # Main Container
-        main_container = ttk.Frame(self.root, padding=16)
-        main_container.pack(fill=tk.BOTH, expand=True)
+        # ── LOGO / BRAND ──
+        brand_frame = ctk.CTkFrame(sidebar, fg_color="transparent")
+        brand_frame.pack(fill="x", padx=16, pady=(20, 6))
 
-        # -------------------------------------------------------------
-        # TOP HEADER BAR
-        # -------------------------------------------------------------
-        header_frame = ttk.Frame(main_container)
-        header_frame.pack(fill=tk.X, pady=(0, 12))
+        ctk.CTkLabel(brand_frame, text="🛡️", font=ctk.CTkFont(size=28)).pack(side="left", padx=(0, 8))
+        brand_text = ctk.CTkFrame(brand_frame, fg_color="transparent")
+        brand_text.pack(side="left")
+        ctk.CTkLabel(brand_text, text="CORTEX", font=ctk.CTkFont(family="Inter", size=16, weight="bold"),
+                     text_color=CYAN).pack(anchor="w")
+        ctk.CTkLabel(brand_text, text="NIDS Agent", font=ctk.CTkFont(family="Inter", size=10),
+                     text_color=TEXT_MUTED).pack(anchor="w")
 
-        title_lbl = ttk.Label(header_frame, text="🛡️ CORTEX NIDS AGENT v2.0", style="Title.TLabel")
-        title_lbl.pack(side=tk.LEFT)
+        # Separator
+        ctk.CTkFrame(sidebar, height=1, fg_color=BORDER).pack(fill="x", padx=16, pady=(16, 12))
 
-        self.backend_status_lbl = tk.Label(
-            header_frame,
-            text="CHECKING BACKEND...",
-            bg="#1E2C42",
-            fg="#F59E0B",
-            font=("JetBrains Mono", 9, "bold"),
-            px=10,
-            py=4
+        # ── NAVIGATION BUTTONS ──
+        nav_items = [
+            ("dashboard",  "📊", "Dashboard"),
+            ("monitoring", "📡", "Monitoring"),
+            ("threatlab",  "⚡", "Threat Lab"),
+            ("logs",       "📋", "Detection Logs"),
+            ("settings",   "⚙️", "Settings"),
+            ("about",      "ℹ️", "About"),
+        ]
+
+        for page_id, icon, label in nav_items:
+            btn = ctk.CTkButton(
+                sidebar,
+                text=f"  {icon}  {label}",
+                anchor="w",
+                font=ctk.CTkFont(family="Inter", size=13),
+                height=40,
+                corner_radius=8,
+                fg_color=BG_CARD if page_id == "dashboard" else "transparent",
+                hover_color=BG_CARD_ALT,
+                text_color=TEXT_WHITE if page_id == "dashboard" else TEXT_MUTED,
+                command=lambda p=page_id: self._navigate(p)
+            )
+            btn.pack(fill="x", padx=12, pady=2)
+            self.nav_buttons[page_id] = btn
+
+        # ── BOTTOM STATUS ──
+        spacer = ctk.CTkFrame(sidebar, fg_color="transparent")
+        spacer.pack(fill="both", expand=True)
+
+        # Backend status indicator
+        self.backend_badge = ctk.CTkLabel(
+            sidebar,
+            text="  ○  CHECKING...",
+            font=ctk.CTkFont(family="JetBrains Mono", size=10, weight="bold"),
+            text_color=ORANGE,
+            anchor="w"
         )
-        self.backend_status_lbl.pack(side=tk.RIGHT)
+        self.backend_badge.pack(fill="x", padx=20, pady=(0, 4))
 
-        # Target API Entry Bar
-        api_bar = ttk.Frame(main_container)
-        api_bar.pack(fill=tk.X, pady=(0, 12))
+        # Engine status
+        engine_status = "ML Engine: Active" if self.prediction_service else "ML Engine: FAILED"
+        engine_color = GREEN if self.prediction_service else RED
+        ctk.CTkLabel(
+            sidebar,
+            text=f"  ● {engine_status}",
+            font=ctk.CTkFont(family="JetBrains Mono", size=10),
+            text_color=engine_color,
+            anchor="w"
+        ).pack(fill="x", padx=20, pady=(0, 4))
 
-        ttk.Label(api_bar, text="Target API Endpoint:", font=("Inter", 9, "bold")).pack(side=tk.LEFT, padx=(0, 8))
-        api_entry = tk.Entry(
-            api_bar,
-            textvariable=self.target_api_url,
-            bg="#0B1220",
-            fg="#38BDF8",
-            insertbackground="white",
-            relief="solid",
-            bd=1,
-            font=("JetBrains Mono", 9)
+        ctk.CTkLabel(
+            sidebar,
+            text="  v2.0.0  •  LightGBM",
+            font=ctk.CTkFont(family="JetBrains Mono", size=9),
+            text_color=TEXT_DIM,
+            anchor="w"
+        ).pack(fill="x", padx=20, pady=(0, 16))
+
+    # ═══════════════════════════════════════════════
+    #  CONTENT AREA (RIGHT SIDE)
+    # ═══════════════════════════════════════════════
+    def _build_content_area(self):
+        # Main content frame
+        self.content_frame = ctk.CTkFrame(self, fg_color=BG_DARK, corner_radius=0)
+        self.content_frame.grid(row=0, column=1, sticky="nsew")
+        self.content_frame.grid_columnconfigure(0, weight=1)
+        self.content_frame.grid_rowconfigure(1, weight=1)
+
+        # ── TOP HEADER BAR ──
+        header = ctk.CTkFrame(self.content_frame, height=50, fg_color=BG_SIDEBAR,
+                              corner_radius=0, border_width=0)
+        header.grid(row=0, column=0, sticky="ew")
+        header.grid_propagate(False)
+        header.grid_columnconfigure(1, weight=1)
+
+        self.page_title_lbl = ctk.CTkLabel(
+            header, text="📊  DASHBOARD",
+            font=ctk.CTkFont(family="Inter", size=14, weight="bold"),
+            text_color=TEXT_WHITE
         )
-        api_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+        self.page_title_lbl.grid(row=0, column=0, padx=20, pady=12, sticky="w")
 
-        btn_check = tk.Button(
-            api_bar,
-            text="Test Health",
-            command=self._check_backend_health,
-            bg="#1E2C42",
-            fg="white",
-            activebackground="#3B82F6",
-            activeforeground="white",
-            relief="flat",
-            font=("Inter", 9, "bold"),
-            px=12,
-            py=2
+        self.clock_lbl = ctk.CTkLabel(
+            header, text="",
+            font=ctk.CTkFont(family="JetBrains Mono", size=11),
+            text_color=TEXT_MUTED
         )
-        btn_check.pack(side=tk.RIGHT)
+        self.clock_lbl.grid(row=0, column=2, padx=20, pady=12, sticky="e")
 
-        # -------------------------------------------------------------
-        # CONTROL PANELS (MODE 1 & MODE 2)
-        # -------------------------------------------------------------
-        controls_frame = ttk.Frame(main_container)
-        controls_frame.pack(fill=tk.X, pady=(0, 12))
-        controls_frame.columnconfigure(0, weight=1)
-        controls_frame.columnconfigure(1, weight=1)
+        # ── PAGE CONTAINER ──
+        self.page_container = ctk.CTkFrame(self.content_frame, fg_color=BG_DARK, corner_radius=0)
+        self.page_container.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
+        self.page_container.grid_columnconfigure(0, weight=1)
+        self.page_container.grid_rowconfigure(0, weight=1)
 
-        # MODE 1: LIVE MONITORING CARD
-        mode1_card = tk.Frame(controls_frame, bg=card_bg, highlightbackground=border_color, highlightthickness=1, bd=0)
-        mode1_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        # Build all pages
+        self._build_dashboard_page()
+        self._build_monitoring_page()
+        self._build_threatlab_page()
+        self._build_logs_page()
+        self._build_settings_page()
+        self._build_about_page()
 
-        m1_head = tk.Label(mode1_card, text="📡 MODE 1: LIVE PACKET MONITORING", bg=card_bg, fg=accent_cyan, font=("Inter", 10, "bold"))
-        m1_head.pack(anchor="w", padx=12, pady=(10, 6))
+        # Show dashboard by default
+        self._navigate("dashboard")
 
-        m1_sub = tk.Label(mode1_card, text="Sniffs real network packets (Wi-Fi/Ethernet) & executes ML threat classification.", bg=card_bg, fg="#94A3B8", font=("Inter", 8))
-        m1_sub.pack(anchor="w", padx=12, pady=(0, 8))
+    # ═══════════════════════════════════════════════
+    #  NAVIGATION
+    # ═══════════════════════════════════════════════
+    def _navigate(self, page_id: str):
+        # Hide all pages
+        for pid, frame in self.pages.items():
+            frame.grid_forget()
 
-        # Interface Selector
-        iface_frame = tk.Frame(mode1_card, bg=card_bg)
-        iface_frame.pack(fill=tk.X, padx=12, pady=(0, 8))
-        tk.Label(iface_frame, text="Interface:", bg=card_bg, fg="#CBD5E1", font=("Inter", 9)).pack(side=tk.LEFT, padx=(0, 6))
+        # Update nav button styles
+        icon_map = {
+            "dashboard": "📊", "monitoring": "📡", "threatlab": "⚡",
+            "logs": "📋", "settings": "⚙️", "about": "ℹ️"
+        }
+        title_map = {
+            "dashboard": "DASHBOARD", "monitoring": "LIVE MONITORING",
+            "threatlab": "THREAT VALIDATION LAB", "logs": "DETECTION LOGS",
+            "settings": "SETTINGS", "about": "ABOUT"
+        }
+
+        for pid, btn in self.nav_buttons.items():
+            if pid == page_id:
+                btn.configure(fg_color=BG_CARD, text_color=TEXT_WHITE)
+            else:
+                btn.configure(fg_color="transparent", text_color=TEXT_MUTED)
+
+        # Show selected page
+        if page_id in self.pages:
+            self.pages[page_id].grid(row=0, column=0, sticky="nsew")
+
+        self.page_title_lbl.configure(text=f"{icon_map.get(page_id, '')}  {title_map.get(page_id, page_id.upper())}")
+        self.current_page = page_id
+
+    # ═══════════════════════════════════════════════
+    #  PAGE: DASHBOARD
+    # ═══════════════════════════════════════════════
+    def _build_dashboard_page(self):
+        page = ctk.CTkFrame(self.page_container, fg_color=BG_DARK)
+        self.pages["dashboard"] = page
+
+        # Scrollable area
+        scroll = ctk.CTkScrollableFrame(page, fg_color=BG_DARK, scrollbar_button_color=BORDER)
+        scroll.pack(fill="both", expand=True, padx=16, pady=12)
+        scroll.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
+
+        # ── STAT CARDS ROW ──
+        self.stat_cards = {}
+        stats_def = [
+            ("flows",   "FLOWS CAPTURED",    "0",    CYAN,   "📦"),
+            ("preds",   "PREDICTIONS MADE",  "0",    BLUE,   "🧠"),
+            ("threats", "THREATS DETECTED",  "0",    RED,    "🚨"),
+            ("conf",    "AVG CONFIDENCE",    "0.0%", GREEN,  "📈"),
+            ("last",    "LAST DETECTION",    "—",    ORANGE, "🎯"),
+        ]
+
+        for col, (key, title, initial, color, icon) in enumerate(stats_def):
+            card = self._make_stat_card(scroll, icon, title, initial, color)
+            card.grid(row=0, column=col, sticky="nsew", padx=4, pady=(0, 12))
+            self.stat_cards[key] = card
+
+        # ── QUICK ACTIONS ROW ──
+        actions_frame = ctk.CTkFrame(scroll, fg_color=BG_CARD, corner_radius=10,
+                                     border_width=1, border_color=BORDER)
+        actions_frame.grid(row=1, column=0, columnspan=5, sticky="ew", padx=4, pady=(0, 12))
+
+        ctk.CTkLabel(actions_frame, text="QUICK ACTIONS",
+                     font=ctk.CTkFont(family="Inter", size=11, weight="bold"),
+                     text_color=TEXT_MUTED).pack(anchor="w", padx=16, pady=(12, 8))
+
+        btn_row = ctk.CTkFrame(actions_frame, fg_color="transparent")
+        btn_row.pack(fill="x", padx=16, pady=(0, 12))
+
+        self.dash_mon_btn = ctk.CTkButton(
+            btn_row, text="📡  Start Monitoring", font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=GREEN_DARK, hover_color=GREEN, height=38, corner_radius=8,
+            command=self.start_monitoring
+        )
+        self.dash_mon_btn.pack(side="left", padx=(0, 8))
+
+        self.dash_sim_btn = ctk.CTkButton(
+            btn_row, text="⚡  Start Simulation", font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=ORANGE_DARK, hover_color=ORANGE, height=38, corner_radius=8,
+            command=self.start_simulation
+        )
+        self.dash_sim_btn.pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            btn_row, text="🔄  Reset Counters", font=ctk.CTkFont(size=12),
+            fg_color=BG_INPUT, hover_color=BORDER_LIGHT, height=38, corner_radius=8,
+            command=self._reset_counters
+        ).pack(side="left")
+
+        # ── LIVE CONSOLE LOG ──
+        console_card = ctk.CTkFrame(scroll, fg_color=BG_CARD, corner_radius=10,
+                                    border_width=1, border_color=BORDER)
+        console_card.grid(row=2, column=0, columnspan=5, sticky="nsew", padx=4, pady=(0, 4))
+        scroll.grid_rowconfigure(2, weight=1)
+
+        console_header = ctk.CTkFrame(console_card, fg_color="transparent")
+        console_header.pack(fill="x", padx=16, pady=(12, 6))
+
+        ctk.CTkLabel(console_header, text="💻  REAL-TIME DETECTION CONSOLE",
+                     font=ctk.CTkFont(family="Inter", size=11, weight="bold"),
+                     text_color=TEXT_WHITE).pack(side="left")
+
+        ctk.CTkButton(
+            console_header, text="Clear", width=60, height=26, corner_radius=6,
+            fg_color=BG_INPUT, hover_color=BORDER_LIGHT,
+            font=ctk.CTkFont(size=11), command=self._clear_log
+        ).pack(side="right")
+
+        self.log_text = ctk.CTkTextbox(
+            console_card,
+            font=ctk.CTkFont(family="JetBrains Mono", size=11),
+            fg_color="#050810",
+            text_color=CYAN,
+            corner_radius=6,
+            height=250,
+            border_width=1,
+            border_color=BORDER
+        )
+        self.log_text.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+
+        # Configure log tags
+        self.log_text.tag_config("INFO", foreground=CYAN)
+        self.log_text.tag_config("FLOW", foreground=GREEN)
+        self.log_text.tag_config("THREAT", foreground=RED)
+        self.log_text.tag_config("WARN", foreground=ORANGE)
+        self.log_text.tag_config("ERROR", foreground="#FF6B6B")
+        self.log_text.tag_config("SUCCESS", foreground=GREEN)
+
+        self.log("INFO", "CortexAgent v2.0 initialized. Production LightGBM pipeline active.")
+        if self.prediction_service:
+            self.log("SUCCESS", f"ML Model: {self.prediction_service.model_name} | "
+                     f"Features: {len(self.prediction_service.feature_names)} | Predictor: Ready")
+        else:
+            err = getattr(self, '_init_error', 'Unknown error')
+            self.log("ERROR", f"ML PredictionService failed to initialize: {err}")
+
+    def _make_stat_card(self, parent, icon: str, title: str, value: str, color: str):
+        card = ctk.CTkFrame(parent, fg_color=BG_CARD, corner_radius=10,
+                            border_width=1, border_color=BORDER)
+
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=14, pady=12)
+
+        # Icon + Title row
+        top = ctk.CTkFrame(inner, fg_color="transparent")
+        top.pack(fill="x")
+
+        ctk.CTkLabel(top, text=icon, font=ctk.CTkFont(size=16)).pack(side="left")
+        ctk.CTkLabel(top, text=title,
+                     font=ctk.CTkFont(family="Inter", size=9, weight="bold"),
+                     text_color=TEXT_MUTED).pack(side="left", padx=(6, 0))
+
+        # Value
+        val_lbl = ctk.CTkLabel(inner, text=value,
+                               font=ctk.CTkFont(family="JetBrains Mono", size=22, weight="bold"),
+                               text_color=color)
+        val_lbl.pack(anchor="w", pady=(6, 0))
+
+        card._value_label = val_lbl
+        return card
+
+    # ═══════════════════════════════════════════════
+    #  PAGE: MONITORING
+    # ═══════════════════════════════════════════════
+    def _build_monitoring_page(self):
+        page = ctk.CTkFrame(self.page_container, fg_color=BG_DARK)
+        self.pages["monitoring"] = page
+
+        scroll = ctk.CTkScrollableFrame(page, fg_color=BG_DARK, scrollbar_button_color=BORDER)
+        scroll.pack(fill="both", expand=True, padx=16, pady=12)
+
+        # ── Control Card ──
+        ctrl_card = ctk.CTkFrame(scroll, fg_color=BG_CARD, corner_radius=10,
+                                 border_width=1, border_color=BORDER)
+        ctrl_card.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(ctrl_card, text="📡  LIVE PACKET MONITORING",
+                     font=ctk.CTkFont(family="Inter", size=13, weight="bold"),
+                     text_color=CYAN).pack(anchor="w", padx=20, pady=(16, 4))
+
+        ctk.CTkLabel(ctrl_card, text="Captures real network packets via Wi-Fi/Ethernet and classifies threats using LightGBM ML pipeline.",
+                     font=ctk.CTkFont(size=11), text_color=TEXT_MUTED,
+                     wraplength=700).pack(anchor="w", padx=20, pady=(0, 12))
+
+        # Interface selector
+        iface_row = ctk.CTkFrame(ctrl_card, fg_color="transparent")
+        iface_row.pack(fill="x", padx=20, pady=(0, 12))
+
+        ctk.CTkLabel(iface_row, text="Network Interface:",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=TEXT_MUTED).pack(side="left", padx=(0, 10))
 
         interfaces = self._get_interface_list()
-        self.iface_combo = ttk.Combobox(iface_frame, textvariable=self.selected_interface, values=interfaces, state="readonly", font=("Inter", 8))
+        self.iface_menu = ctk.CTkOptionMenu(
+            iface_row, values=interfaces,
+            font=ctk.CTkFont(size=11),
+            fg_color=BG_INPUT, button_color=BORDER_LIGHT,
+            dropdown_fg_color=BG_CARD,
+            width=350, height=32,
+            command=self._on_interface_change
+        )
+        self.iface_menu.pack(side="left")
         if interfaces:
-            self.iface_combo.current(0)
-        self.iface_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            self.selected_interface = interfaces[0]
 
-        m1_btn_frame = tk.Frame(mode1_card, bg=card_bg)
-        m1_btn_frame.pack(fill=tk.X, padx=12, pady=(0, 12))
+        # Buttons
+        btn_row = ctk.CTkFrame(ctrl_card, fg_color="transparent")
+        btn_row.pack(fill="x", padx=20, pady=(0, 16))
 
-        self.btn_start_mon = tk.Button(
-            m1_btn_frame,
-            text="▶ Start Monitoring",
-            command=self.start_monitoring,
-            bg=accent_green,
-            fg="white",
-            font=("Inter", 9, "bold"),
-            relief="flat",
-            px=12,
-            py=4
+        self.mon_start_btn = ctk.CTkButton(
+            btn_row, text="▶  Start Monitoring",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=GREEN_DARK, hover_color=GREEN,
+            height=40, corner_radius=8, width=180,
+            command=self.start_monitoring
         )
-        self.btn_start_mon.pack(side=tk.LEFT, padx=(0, 6))
+        self.mon_start_btn.pack(side="left", padx=(0, 8))
 
-        self.btn_stop_mon = tk.Button(
-            m1_btn_frame,
-            text="⏹ Stop Monitoring",
-            command=self.stop_monitoring,
-            bg="#334155",
-            fg="white",
-            state=tk.DISABLED,
-            font=("Inter", 9, "bold"),
-            relief="flat",
-            px=12,
-            py=4
+        self.mon_stop_btn = ctk.CTkButton(
+            btn_row, text="⏹  Stop Monitoring",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=BG_INPUT, hover_color=RED_DARK,
+            height=40, corner_radius=8, width=180,
+            state="disabled",
+            command=self.stop_monitoring
         )
-        self.btn_stop_mon.pack(side=tk.LEFT)
+        self.mon_stop_btn.pack(side="left", padx=(0, 16))
 
-        self.mon_status_lbl = tk.Label(m1_btn_frame, text="IDLE", bg=card_bg, fg="#64748B", font=("JetBrains Mono", 9, "bold"))
-        self.mon_status_lbl.pack(side=tk.RIGHT)
+        self.mon_status_badge = ctk.CTkLabel(
+            btn_row, text="● IDLE",
+            font=ctk.CTkFont(family="JetBrains Mono", size=12, weight="bold"),
+            text_color=TEXT_DIM
+        )
+        self.mon_status_badge.pack(side="left")
 
-        # MODE 2: THREAT VALIDATION LAB CARD
-        mode2_card = tk.Frame(controls_frame, bg=card_bg, highlightbackground=border_color, highlightthickness=1, bd=0)
-        mode2_card.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        # ── Live Stats ──
+        stats_card = ctk.CTkFrame(scroll, fg_color=BG_CARD, corner_radius=10,
+                                  border_width=1, border_color=BORDER)
+        stats_card.pack(fill="x", pady=(0, 12))
 
-        m2_head = tk.Label(mode2_card, text="⚡ MODE 2: THREAT VALIDATION LAB", bg=card_bg, fg=accent_orange, font=("Inter", 10, "bold"))
-        m2_head.pack(anchor="w", padx=12, pady=(10, 6))
+        ctk.CTkLabel(stats_card, text="MONITORING SESSION STATS",
+                     font=ctk.CTkFont(family="Inter", size=11, weight="bold"),
+                     text_color=TEXT_MUTED).pack(anchor="w", padx=20, pady=(14, 10))
 
-        m2_sub = tk.Label(mode2_card, text="Generates realistic attack traffic flows (DoS, DDoS, PortScan) through ML pipeline.", bg=card_bg, fg="#94A3B8", font=("Inter", 8))
-        m2_sub.pack(anchor="w", padx=12, pady=(0, 8))
+        mon_stats_row = ctk.CTkFrame(stats_card, fg_color="transparent")
+        mon_stats_row.pack(fill="x", padx=20, pady=(0, 16))
+        mon_stats_row.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-        # Profile Selector
-        prof_frame = tk.Frame(mode2_card, bg=card_bg)
-        prof_frame.pack(fill=tk.X, padx=12, pady=(0, 8))
-        tk.Label(prof_frame, text="Attack Profile:", bg=card_bg, fg="#CBD5E1", font=("Inter", 9)).pack(side=tk.LEFT, padx=(0, 6))
+        self.mon_stat_lbls = {}
+        for col, (key, title, color) in enumerate([
+            ("packets", "Packets Seen", CYAN),
+            ("flows", "Flows Built", BLUE),
+            ("preds", "ML Predictions", GREEN),
+            ("threats", "Threats Found", RED)
+        ]):
+            f = ctk.CTkFrame(mon_stats_row, fg_color=BG_CARD_ALT, corner_radius=8)
+            f.grid(row=0, column=col, sticky="ew", padx=4)
+            ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=10, weight="bold"),
+                         text_color=TEXT_MUTED).pack(padx=12, pady=(8, 2))
+            lbl = ctk.CTkLabel(f, text="0", font=ctk.CTkFont(family="JetBrains Mono", size=20, weight="bold"),
+                               text_color=color)
+            lbl.pack(padx=12, pady=(0, 8))
+            self.mon_stat_lbls[key] = lbl
+
+    # ═══════════════════════════════════════════════
+    #  PAGE: THREAT LAB
+    # ═══════════════════════════════════════════════
+    def _build_threatlab_page(self):
+        page = ctk.CTkFrame(self.page_container, fg_color=BG_DARK)
+        self.pages["threatlab"] = page
+
+        scroll = ctk.CTkScrollableFrame(page, fg_color=BG_DARK, scrollbar_button_color=BORDER)
+        scroll.pack(fill="both", expand=True, padx=16, pady=12)
+
+        # ── Header ──
+        header_card = ctk.CTkFrame(scroll, fg_color=BG_CARD, corner_radius=10,
+                                   border_width=1, border_color=BORDER)
+        header_card.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(header_card, text="⚡  THREAT VALIDATION LABORATORY",
+                     font=ctk.CTkFont(family="Inter", size=13, weight="bold"),
+                     text_color=ORANGE).pack(anchor="w", padx=20, pady=(16, 4))
+
+        ctk.CTkLabel(header_card, text="Generates realistic synthetic attack traffic flows and classifies them through the production ML pipeline to validate detection accuracy.",
+                     font=ctk.CTkFont(size=11), text_color=TEXT_MUTED,
+                     wraplength=700).pack(anchor="w", padx=20, pady=(0, 12))
+
+        # Controls row
+        ctrl_row = ctk.CTkFrame(header_card, fg_color="transparent")
+        ctrl_row.pack(fill="x", padx=20, pady=(0, 16))
+
+        # Profile selector
+        ctk.CTkLabel(ctrl_row, text="Attack Profile:",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=TEXT_MUTED).pack(side="left", padx=(0, 10))
 
         profiles = [
-            "Balanced Mix (70% Benign, 30% Attack)",
-            "DoS GoldenEye Attack Flood",
+            "Balanced Mix",
+            "DoS GoldenEye Flood",
             "DDoS Attack Vector",
-            "PortScan Reconnaissance"
+            "PortScan Recon"
         ]
-        self.prof_combo = ttk.Combobox(prof_frame, textvariable=self.selected_profile, values=profiles, state="readonly", font=("Inter", 8))
-        self.prof_combo.current(0)
-        self.prof_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        m2_btn_frame = tk.Frame(mode2_card, bg=card_bg)
-        m2_btn_frame.pack(fill=tk.X, padx=12, pady=(0, 12))
-
-        self.btn_start_sim = tk.Button(
-            m2_btn_frame,
-            text="⚡ Start Simulation",
-            command=self.start_simulation,
-            bg=accent_orange,
-            fg="white",
-            font=("Inter", 9, "bold"),
-            relief="flat",
-            px=12,
-            py=4
+        self.profile_menu = ctk.CTkOptionMenu(
+            ctrl_row, values=profiles,
+            font=ctk.CTkFont(size=11),
+            fg_color=BG_INPUT, button_color=BORDER_LIGHT,
+            dropdown_fg_color=BG_CARD,
+            width=220, height=32,
+            command=self._on_profile_change
         )
-        self.btn_start_sim.pack(side=tk.LEFT, padx=(0, 6))
+        self.profile_menu.pack(side="left", padx=(0, 16))
 
-        self.btn_stop_sim = tk.Button(
-            m2_btn_frame,
-            text="⏹ Stop Simulation",
-            command=self.stop_simulation,
-            bg="#334155",
-            fg="white",
-            state=tk.DISABLED,
-            font=("Inter", 9, "bold"),
-            relief="flat",
-            px=12,
-            py=4
+        # Interval
+        ctk.CTkLabel(ctrl_row, text="Interval (s):",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=TEXT_MUTED).pack(side="left", padx=(0, 6))
+
+        self.interval_entry = ctk.CTkEntry(
+            ctrl_row, width=60, height=32, font=ctk.CTkFont(size=11),
+            fg_color=BG_INPUT, border_color=BORDER
         )
-        self.btn_stop_sim.pack(side=tk.LEFT)
+        self.interval_entry.insert(0, "0.5")
+        self.interval_entry.pack(side="left", padx=(0, 16))
 
-        self.sim_status_lbl = tk.Label(m2_btn_frame, text="IDLE", bg=card_bg, fg="#64748B", font=("JetBrains Mono", 9, "bold"))
-        self.sim_status_lbl.pack(side=tk.RIGHT)
-
-        # -------------------------------------------------------------
-        # TELEMETRY STATISTICS GRID (5 STATS)
-        # -------------------------------------------------------------
-        stats_frame = ttk.Frame(main_container)
-        stats_frame.pack(fill=tk.X, pady=(0, 12))
-        for idx in range(5):
-            stats_frame.columnconfigure(idx, weight=1)
-
-        self.card_flows = self._create_stat_card(stats_frame, 0, "FLOWS CAPTURED", "0")
-        self.card_preds = self._create_stat_card(stats_frame, 1, "PREDICTIONS MADE", "0")
-        self.card_threats = self._create_stat_card(stats_frame, 2, "THREATS DETECTED", "0", fg_color=accent_red)
-        self.card_conf = self._create_stat_card(stats_frame, 3, "AVG CONFIDENCE", "0.0%")
-        self.card_last = self._create_stat_card(stats_frame, 4, "LAST DETECTION", "None", fg_color=accent_cyan)
-
-        # -------------------------------------------------------------
-        # EVENT LOG CONSOLE
-        # -------------------------------------------------------------
-        console_frame = tk.Frame(main_container, bg=card_bg, highlightbackground=border_color, highlightthickness=1)
-        console_frame.pack(fill=tk.BOTH, expand=True)
-
-        c_head = tk.Frame(console_frame, bg=card_bg)
-        c_head.pack(fill=tk.X, padx=12, pady=6)
-        tk.Label(c_head, text="💻 REAL-TIME SYSTEM & ML DETECTION CONSOLE LOG", bg=card_bg, fg=text_white, font=("Inter", 9, "bold")).pack(side=tk.LEFT)
-
-        btn_clear = tk.Button(c_head, text="Clear Log", command=self._clear_log, bg="#1E2C42", fg="#94A3B8", relief="flat", font=("Inter", 8), px=8)
-        btn_clear.pack(side=tk.RIGHT)
-
-        self.log_text = scrolledtext.ScrolledText(
-            console_frame,
-            bg="#04070E",
-            fg="#38BDF8",
-            insertbackground="white",
-            font=("JetBrains Mono", 9),
-            bd=0,
-            relief="flat"
+        self.sim_start_btn = ctk.CTkButton(
+            ctrl_row, text="⚡  Start Simulation",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=ORANGE_DARK, hover_color=ORANGE,
+            height=38, corner_radius=8, width=180,
+            command=self.start_simulation
         )
-        self.log_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+        self.sim_start_btn.pack(side="left", padx=(0, 8))
 
-        # Tag configurations for colorized logging
-        self.log_text.tag_config("INFO", foreground="#38BDF8")
-        self.log_text.tag_config("FLOW", foreground="#10B981")
-        self.log_text.tag_config("THREAT", foreground="#F43F5E", font=("JetBrains Mono", 9, "bold"))
-        self.log_text.tag_config("WARN", foreground="#F59E0B")
-        self.log_text.tag_config("ERROR", foreground="#EF4444", font=("JetBrains Mono", 9, "bold"))
+        self.sim_stop_btn = ctk.CTkButton(
+            ctrl_row, text="⏹  Stop",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=BG_INPUT, hover_color=RED_DARK,
+            height=38, corner_radius=8, width=100,
+            state="disabled",
+            command=self.stop_simulation
+        )
+        self.sim_stop_btn.pack(side="left")
 
-        self.log("INFO", "CortexAgent Desktop Engine initialized successfully. Production ML Pipeline active.")
+        self.sim_status_badge = ctk.CTkLabel(
+            ctrl_row, text="● IDLE",
+            font=ctk.CTkFont(family="JetBrains Mono", size=12, weight="bold"),
+            text_color=TEXT_DIM
+        )
+        self.sim_status_badge.pack(side="right")
 
-    def _create_stat_card(self, parent, col, title, initial_val, fg_color="#06B6D4"):
-        card = tk.Frame(parent, bg="#0B1220", highlightbackground="#1E2C42", highlightthickness=1)
-        card.grid(row=0, column=col, sticky="nsew", padx=3)
+        # ── Attack Profile Cards ──
+        cards_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        cards_frame.pack(fill="x", pady=(0, 12))
+        cards_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-        tk.Label(card, text=title, bg="#0B1220", fg="#94A3B8", font=("Inter", 8, "bold")).pack(anchor="w", padx=8, pady=(6, 2))
-        lbl_val = tk.Label(card, text=initial_val, bg="#0B1220", fg=fg_color, font=("JetBrains Mono", 14, "bold"))
-        lbl_val.pack(anchor="w", padx=8, pady=(0, 6))
-        return lbl_val
+        attack_cards_def = [
+            ("🔍", "PortScan", "Reconnaissance", "Network port scanning", BLUE, "50-60"),
+            ("💥", "DoS", "Denial of Service", "GoldenEye / Hulk / Slowloris", RED, "75-85"),
+            ("🌊", "DDoS", "Distributed DoS", "Volumetric flood attack", PINK, "85-95"),
+            ("🤖", "Bot", "Botnet C2", "Command & control traffic", PURPLE, "80-90"),
+        ]
 
+        for col, (icon, name, cat, desc, color, severity) in enumerate(attack_cards_def):
+            c = ctk.CTkFrame(cards_frame, fg_color=BG_CARD, corner_radius=10,
+                             border_width=1, border_color=BORDER)
+            c.grid(row=0, column=col, sticky="nsew", padx=4)
+
+            ctk.CTkLabel(c, text=icon, font=ctk.CTkFont(size=24)).pack(padx=14, pady=(14, 4))
+            ctk.CTkLabel(c, text=name, font=ctk.CTkFont(size=13, weight="bold"),
+                         text_color=color).pack()
+            ctk.CTkLabel(c, text=cat, font=ctk.CTkFont(size=10),
+                         text_color=TEXT_MUTED).pack()
+            ctk.CTkLabel(c, text=desc, font=ctk.CTkFont(size=9),
+                         text_color=TEXT_DIM, wraplength=140).pack(padx=10, pady=(4, 2))
+            ctk.CTkLabel(c, text=f"Severity: {severity}/100",
+                         font=ctk.CTkFont(family="JetBrains Mono", size=10, weight="bold"),
+                         text_color=color).pack(pady=(2, 14))
+
+    # ═══════════════════════════════════════════════
+    #  PAGE: DETECTION LOGS
+    # ═══════════════════════════════════════════════
+    def _build_logs_page(self):
+        page = ctk.CTkFrame(self.page_container, fg_color=BG_DARK)
+        self.pages["logs"] = page
+
+        # Header
+        header = ctk.CTkFrame(page, fg_color=BG_CARD, corner_radius=10,
+                              border_width=1, border_color=BORDER)
+        header.pack(fill="x", padx=16, pady=(12, 8))
+
+        h_inner = ctk.CTkFrame(header, fg_color="transparent")
+        h_inner.pack(fill="x", padx=16, pady=12)
+
+        ctk.CTkLabel(h_inner, text="📋  FULL DETECTION LOG",
+                     font=ctk.CTkFont(family="Inter", size=13, weight="bold"),
+                     text_color=TEXT_WHITE).pack(side="left")
+
+        ctk.CTkButton(h_inner, text="Clear All", width=80, height=30,
+                      corner_radius=6, fg_color=BG_INPUT, hover_color=RED_DARK,
+                      font=ctk.CTkFont(size=11), command=self._clear_log
+                      ).pack(side="right")
+
+        self.logs_auto_scroll = ctk.CTkSwitch(
+            h_inner, text="Auto-Scroll", font=ctk.CTkFont(size=11),
+            onvalue=True, offvalue=False
+        )
+        self.logs_auto_scroll.select()
+        self.logs_auto_scroll.pack(side="right", padx=16)
+
+        # Log display (shares the same log_text widget from dashboard — reference only display)
+        self.logs_text = ctk.CTkTextbox(
+            page,
+            font=ctk.CTkFont(family="JetBrains Mono", size=11),
+            fg_color="#050810",
+            text_color=CYAN,
+            corner_radius=8,
+            border_width=1,
+            border_color=BORDER
+        )
+        self.logs_text.pack(fill="both", expand=True, padx=16, pady=(0, 12))
+
+        self.logs_text.tag_config("INFO", foreground=CYAN)
+        self.logs_text.tag_config("FLOW", foreground=GREEN)
+        self.logs_text.tag_config("THREAT", foreground=RED)
+        self.logs_text.tag_config("WARN", foreground=ORANGE)
+        self.logs_text.tag_config("ERROR", foreground="#FF6B6B")
+        self.logs_text.tag_config("SUCCESS", foreground=GREEN)
+
+    # ═══════════════════════════════════════════════
+    #  PAGE: SETTINGS
+    # ═══════════════════════════════════════════════
+    def _build_settings_page(self):
+        page = ctk.CTkFrame(self.page_container, fg_color=BG_DARK)
+        self.pages["settings"] = page
+
+        scroll = ctk.CTkScrollableFrame(page, fg_color=BG_DARK, scrollbar_button_color=BORDER)
+        scroll.pack(fill="both", expand=True, padx=16, pady=12)
+
+        # ── API Endpoint ──
+        api_card = ctk.CTkFrame(scroll, fg_color=BG_CARD, corner_radius=10,
+                                border_width=1, border_color=BORDER)
+        api_card.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(api_card, text="🌐  BACKEND API CONFIGURATION",
+                     font=ctk.CTkFont(family="Inter", size=12, weight="bold"),
+                     text_color=TEXT_WHITE).pack(anchor="w", padx=20, pady=(16, 8))
+
+        api_row = ctk.CTkFrame(api_card, fg_color="transparent")
+        api_row.pack(fill="x", padx=20, pady=(0, 16))
+
+        ctk.CTkLabel(api_row, text="Target Endpoint:",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=TEXT_MUTED).pack(side="left", padx=(0, 10))
+
+        self.api_entry = ctk.CTkEntry(
+            api_row, width=450, height=34,
+            font=ctk.CTkFont(family="JetBrains Mono", size=11),
+            fg_color=BG_INPUT, border_color=BORDER
+        )
+        self.api_entry.insert(0, self.target_api_url)
+        self.api_entry.pack(side="left", padx=(0, 10))
+
+        ctk.CTkButton(
+            api_row, text="Test Health", width=100, height=34,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            fg_color=CYAN_DARK, hover_color=CYAN,
+            corner_radius=6,
+            command=self._check_backend_health
+        ).pack(side="left")
+
+        # ── ML Engine Status ──
+        ml_card = ctk.CTkFrame(scroll, fg_color=BG_CARD, corner_radius=10,
+                               border_width=1, border_color=BORDER)
+        ml_card.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(ml_card, text="🧠  ML ENGINE STATUS",
+                     font=ctk.CTkFont(family="Inter", size=12, weight="bold"),
+                     text_color=TEXT_WHITE).pack(anchor="w", padx=20, pady=(16, 8))
+
+        ml_info = ctk.CTkFrame(ml_card, fg_color="transparent")
+        ml_info.pack(fill="x", padx=20, pady=(0, 16))
+
+        if self.prediction_service:
+            status_items = [
+                ("Model", self.prediction_service.model_name, GREEN),
+                ("Features", str(len(self.prediction_service.feature_names)), CYAN),
+                ("Predictor", type(self.prediction_service.predictor).__name__, GREEN),
+                ("Status", "ACTIVE", GREEN),
+            ]
+        else:
+            status_items = [
+                ("Model", "NOT LOADED", RED),
+                ("Features", "—", RED),
+                ("Predictor", "—", RED),
+                ("Status", "FAILED", RED),
+            ]
+
+        for label, value, color in status_items:
+            row = ctk.CTkFrame(ml_info, fg_color="transparent")
+            row.pack(fill="x", pady=2)
+            ctk.CTkLabel(row, text=f"{label}:", font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color=TEXT_MUTED, width=100, anchor="w").pack(side="left")
+            ctk.CTkLabel(row, text=value, font=ctk.CTkFont(family="JetBrains Mono", size=11),
+                         text_color=color).pack(side="left")
+
+    # ═══════════════════════════════════════════════
+    #  PAGE: ABOUT
+    # ═══════════════════════════════════════════════
+    def _build_about_page(self):
+        page = ctk.CTkFrame(self.page_container, fg_color=BG_DARK)
+        self.pages["about"] = page
+
+        center = ctk.CTkFrame(page, fg_color="transparent")
+        center.place(relx=0.5, rely=0.45, anchor="center")
+
+        ctk.CTkLabel(center, text="🛡️", font=ctk.CTkFont(size=48)).pack(pady=(0, 8))
+        ctk.CTkLabel(center, text="CortexAgent",
+                     font=ctk.CTkFont(family="Inter", size=28, weight="bold"),
+                     text_color=CYAN).pack()
+        ctk.CTkLabel(center, text="Enterprise Network Threat Detection",
+                     font=ctk.CTkFont(family="Inter", size=14),
+                     text_color=TEXT_MUTED).pack(pady=(4, 16))
+
+        ctk.CTkFrame(center, height=1, width=300, fg_color=BORDER).pack(pady=8)
+
+        info_items = [
+            ("Version", "2.0.0"),
+            ("Engine", "LightGBM + CICIDS2017"),
+            ("Pipeline", "Production InferencePipeline"),
+            ("Features", "20 Network Flow Features"),
+            ("Framework", "CustomTkinter + Python 3.x"),
+        ]
+
+        for label, value in info_items:
+            row = ctk.CTkFrame(center, fg_color="transparent")
+            row.pack(fill="x", pady=2)
+            ctk.CTkLabel(row, text=f"{label}:", font=ctk.CTkFont(size=12, weight="bold"),
+                         text_color=TEXT_MUTED, width=120, anchor="e").pack(side="left")
+            ctk.CTkLabel(row, text=f"  {value}", font=ctk.CTkFont(size=12),
+                         text_color=TEXT_WHITE).pack(side="left")
+
+        ctk.CTkFrame(center, height=1, width=300, fg_color=BORDER).pack(pady=12)
+
+        ctk.CTkLabel(center, text="Built for Cortex NIDS Platform",
+                     font=ctk.CTkFont(size=11), text_color=TEXT_DIM).pack()
+        ctk.CTkLabel(center, text="© 2026 — MIT License",
+                     font=ctk.CTkFont(size=10), text_color=TEXT_DIM).pack(pady=(2, 0))
+
+    # ═══════════════════════════════════════════════
+    #  UTILITY METHODS
+    # ═══════════════════════════════════════════════
     def _get_interface_list(self):
         try:
             ifaces = list_network_interfaces()
@@ -346,56 +855,122 @@ class CortexAgentGUI:
         except Exception:
             return ["Default Interface"]
 
+    def _on_interface_change(self, choice):
+        self.selected_interface = choice
+
+    def _on_profile_change(self, choice):
+        self.selected_profile = choice
+
+    def _update_clock(self):
+        now = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+        self.clock_lbl.configure(text=now)
+        self.after(1000, self._update_clock)
+
+    def _reset_counters(self):
+        self.flows_captured = 0
+        self.predictions_made = 0
+        self.threats_detected = 0
+        self.total_confidence_sum = 0.0
+        self.last_detection_str = "—"
+        self._update_dashboard_stats()
+        self.log("INFO", "Telemetry counters reset.")
+
     def log(self, level: str, msg: str):
         timestamp = time.strftime("%H:%M:%S")
         formatted = f"[{timestamp}] [{level:<7}] {msg}\n"
 
         def _append():
-            self.log_text.insert(tk.END, formatted, level)
-            self.log_text.see(tk.END)
+            # Dashboard console
+            if hasattr(self, 'log_text') and self.log_text:
+                self.log_text.insert("end", formatted, level)
+                self.log_text.see("end")
+            # Logs page console
+            if hasattr(self, 'logs_text') and self.logs_text:
+                self.logs_text.insert("end", formatted, level)
+                if hasattr(self, 'logs_auto_scroll') and self.logs_auto_scroll.get():
+                    self.logs_text.see("end")
 
-        self.root.after(0, _append)
+        self.after(0, _append)
 
     def _clear_log(self):
-        self.log_text.delete("1.0", tk.END)
+        if hasattr(self, 'log_text') and self.log_text:
+            self.log_text.delete("1.0", "end")
+        if hasattr(self, 'logs_text') and self.logs_text:
+            self.logs_text.delete("1.0", "end")
 
     def _check_backend_health(self):
+        import urllib.request
+
+        # Update API URL from settings entry if available
+        if hasattr(self, 'api_entry'):
+            self.target_api_url = self.api_entry.get().strip()
+
         def _check():
-            url = f"{self.target_api_url.get().rstrip('/')}/health"
+            url = f"{self.target_api_url.rstrip('/')}/health"
             try:
                 req = urllib.request.urlopen(url, timeout=3.0)
                 if req.getcode() == 200:
                     self.backend_online = True
-                    self.root.after(0, lambda: self.backend_status_lbl.config(text="● ONLINE (RAILWAY)", bg="#065F46", fg="#34D399"))
-                    self.log("INFO", f"Connected to Cloud Backend API: {url}")
+                    self.after(0, lambda: self.backend_badge.configure(
+                        text="  ●  ONLINE (RAILWAY)", text_color=GREEN))
+                    self.log("SUCCESS", f"Connected to Cloud Backend API: {url}")
                     return
             except Exception:
                 pass
             self.backend_online = False
-            self.root.after(0, lambda: self.backend_status_lbl.config(text="○ OFFLINE (LOCAL ML ONLY)", bg="#881337", fg="#FCA5A5"))
-            self.log("WARN", f"Could not reach Backend API at {url}. Live alerts will run in local SQLite mode.")
+            self.after(0, lambda: self.backend_badge.configure(
+                text="  ○  OFFLINE (LOCAL)", text_color=RED))
+            self.log("WARN", f"Backend unreachable at {url}. Running in local SQLite mode.")
 
         threading.Thread(target=_check, daemon=True).start()
 
-    # -------------------------------------------------------------
-    # MODE 1: LIVE PACKET MONITORING LOGIC
-    # -------------------------------------------------------------
+    def _update_dashboard_stats(self):
+        avg_conf = (self.total_confidence_sum / max(1, self.predictions_made)) * 100
+
+        def _update():
+            if "flows" in self.stat_cards:
+                self.stat_cards["flows"]._value_label.configure(text=f"{self.flows_captured:,}")
+            if "preds" in self.stat_cards:
+                self.stat_cards["preds"]._value_label.configure(text=f"{self.predictions_made:,}")
+            if "threats" in self.stat_cards:
+                self.stat_cards["threats"]._value_label.configure(text=f"{self.threats_detected:,}")
+            if "conf" in self.stat_cards:
+                self.stat_cards["conf"]._value_label.configure(text=f"{avg_conf:.1f}%")
+            if "last" in self.stat_cards:
+                self.stat_cards["last"]._value_label.configure(text=self.last_detection_str[:20])
+
+            # Update monitoring page stats too
+            if hasattr(self, 'mon_stat_lbls'):
+                self.mon_stat_lbls.get("flows", None) and self.mon_stat_lbls["flows"].configure(text=f"{self.flows_captured:,}")
+                self.mon_stat_lbls.get("preds", None) and self.mon_stat_lbls["preds"].configure(text=f"{self.predictions_made:,}")
+                self.mon_stat_lbls.get("threats", None) and self.mon_stat_lbls["threats"].configure(text=f"{self.threats_detected:,}")
+
+        self.after(0, _update)
+
+    # ═══════════════════════════════════════════════
+    #  MODE 1: LIVE PACKET MONITORING
+    # ═══════════════════════════════════════════════
     def start_monitoring(self):
         if self.monitoring_active:
             return
 
-        selected_iface = self.selected_interface.get()
+        iface = self.selected_interface
         self.monitoring_active = True
-        self.btn_start_mon.config(state=tk.DISABLED, bg="#334155")
-        self.btn_stop_mon.config(state=tk.NORMAL, bg="#F43F5E")
-        self.mon_status_lbl.config(text="RUNNING", fg="#10B981")
 
-        self.log("INFO", f"Starting Mode 1: Live Network Packet Monitor on interface '{selected_iface}'...")
+        # Update buttons across pages
+        self.mon_start_btn.configure(state="disabled", fg_color=BG_INPUT)
+        self.mon_stop_btn.configure(state="normal", fg_color=RED_DARK)
+        self.mon_status_badge.configure(text="● RUNNING", text_color=GREEN)
+        self.dash_mon_btn.configure(state="disabled", fg_color=BG_INPUT, text="📡  Monitoring...")
 
-        self.capturer = PacketCapturer(interface=selected_iface if selected_iface != "Default Interface" else None, bpf_filter="ip")
+        self.log("INFO", f"Starting Mode 1: Live Packet Monitor on '{iface}'...")
+
+        self.capturer = PacketCapturer(
+            interface=iface if iface != "Default Interface" else None,
+            bpf_filter="ip"
+        )
         self.flow_builder = FlowBuilder(idle_timeout_sec=2.0)
 
-        # 1. Packet Capture Thread
         self.monitor_thread = threading.Thread(
             target=self.capturer.start_capture,
             args=(self._on_packet_received,),
@@ -403,7 +978,6 @@ class CortexAgentGUI:
         )
         self.monitor_thread.start()
 
-        # 2. Flow Flush Loop Thread
         self.flush_thread = threading.Thread(target=self._flush_loop, daemon=True)
         self.flush_thread.start()
 
@@ -415,11 +989,12 @@ class CortexAgentGUI:
         if self.capturer:
             self.capturer.stop_capture()
 
-        self.btn_start_mon.config(state=tk.NORMAL, bg="#10B981")
-        self.btn_stop_mon.config(state=tk.DISABLED, bg="#334155")
-        self.mon_status_lbl.config(text="IDLE", fg="#64748B")
+        self.mon_start_btn.configure(state="normal", fg_color=GREEN_DARK)
+        self.mon_stop_btn.configure(state="disabled", fg_color=BG_INPUT)
+        self.mon_status_badge.configure(text="● IDLE", text_color=TEXT_DIM)
+        self.dash_mon_btn.configure(state="normal", fg_color=GREEN_DARK, text="📡  Start Monitoring")
 
-        self.log("WARN", "Stopped Mode 1: Live Network Packet Monitor.")
+        self.log("WARN", "Stopped Mode 1: Live Packet Monitor.")
 
     def _on_packet_received(self, pkt):
         if not self.monitoring_active:
@@ -435,20 +1010,26 @@ class CortexAgentGUI:
             for flow in expired:
                 self._evaluate_and_post_flow(flow, is_live=True)
 
-    # -------------------------------------------------------------
-    # MODE 2: THREAT VALIDATION LAB LOGIC
-    # -------------------------------------------------------------
+    # ═══════════════════════════════════════════════
+    #  MODE 2: THREAT VALIDATION LAB
+    # ═══════════════════════════════════════════════
     def start_simulation(self):
         if self.simulation_active:
             return
 
         self.simulation_active = True
-        self.btn_start_sim.config(state=tk.DISABLED, bg="#334155")
-        self.btn_stop_sim.config(state=tk.NORMAL, bg="#F43F5E")
-        self.sim_status_lbl.config(text="RUNNING", fg="#F59E0B")
+        self.sim_start_btn.configure(state="disabled", fg_color=BG_INPUT)
+        self.sim_stop_btn.configure(state="normal", fg_color=RED_DARK)
+        self.sim_status_badge.configure(text="● RUNNING", text_color=ORANGE)
+        self.dash_sim_btn.configure(state="disabled", fg_color=BG_INPUT, text="⚡  Simulating...")
 
-        profile_choice = self.selected_profile.get()
-        self.log("INFO", f"Starting Mode 2: Threat Validation Lab ({profile_choice})...")
+        # Parse interval
+        try:
+            self.sim_interval = float(self.interval_entry.get())
+        except (ValueError, AttributeError):
+            self.sim_interval = 0.5
+
+        self.log("INFO", f"Starting Mode 2: Threat Validation Lab ({self.selected_profile})...")
 
         self.sim_thread = threading.Thread(target=self._simulation_loop, daemon=True)
         self.sim_thread.start()
@@ -458,25 +1039,24 @@ class CortexAgentGUI:
             return
 
         self.simulation_active = False
-        self.btn_start_sim.config(state=tk.NORMAL, bg="#F59E0B")
-        self.btn_stop_sim.config(state=tk.DISABLED, bg="#334155")
-        self.sim_status_lbl.config(text="IDLE", fg="#64748B")
+        self.sim_start_btn.configure(state="normal", fg_color=ORANGE_DARK)
+        self.sim_stop_btn.configure(state="disabled", fg_color=BG_INPUT)
+        self.sim_status_badge.configure(text="● IDLE", text_color=TEXT_DIM)
+        self.dash_sim_btn.configure(state="normal", fg_color=ORANGE_DARK, text="⚡  Start Simulation")
 
         self.log("WARN", "Stopped Mode 2: Threat Validation Lab.")
 
     def _simulation_loop(self):
-        profile_choice = self.selected_profile.get()
+        profile_choice = self.selected_profile
 
         while self.simulation_active:
-            # Pick profile based on user selection
             if "DoS" in profile_choice:
-                prof = ATTACK_PROFILES[1]  # DoS GoldenEye
+                prof = ATTACK_PROFILES[1]
             elif "DDoS" in profile_choice:
-                prof = ATTACK_PROFILES[2]  # DDoS
+                prof = ATTACK_PROFILES[2]
             elif "PortScan" in profile_choice:
-                prof = ATTACK_PROFILES[3]  # PortScan
+                prof = ATTACK_PROFILES[3]
             else:
-                # Balanced Mix
                 r = random.random()
                 if r < 0.70:
                     prof = ATTACK_PROFILES[0]
@@ -519,13 +1099,20 @@ class CortexAgentGUI:
             }
 
             self._evaluate_and_post_flow(flow_feats, is_live=False)
-            time.sleep(self.sim_interval.get())
+            time.sleep(self.sim_interval)
 
-    # -------------------------------------------------------------
-    # SHARED PRODUCTION INFERENCE & TELEMETRY POSTING
-    # -------------------------------------------------------------
+    # ═══════════════════════════════════════════════
+    #  SHARED PRODUCTION INFERENCE & TELEMETRY
+    # ═══════════════════════════════════════════════
     def _evaluate_and_post_flow(self, flow_feats: Dict[str, Any], is_live: bool = False):
+        import urllib.request
+
         try:
+            # Guard: ensure prediction pipeline is initialized
+            if self.prediction_service is None or self.prediction_service.predictor is None:
+                self.log("ERROR", "PredictionService not initialized. Cannot run inference. Check model files.")
+                return
+
             self.flows_captured += 1
 
             src_ip = flow_feats.pop("_src_ip", "192.168.1.100")
@@ -557,7 +1144,7 @@ class CortexAgentGUI:
                 self.last_detection_str = f"{attack_type} ({risk_level})"
                 self.log("THREAT", f"🚨 ALERT [{risk_level}]: {attack_type} | Risk: {risk_score:.1f}/100 | {src_ip} -> :{dst_port} | Latency: {latency:.2f}ms")
             else:
-                self.log("FLOW", f"Flow [{src_ip} -> :{dst_port}] | Predict: {attack_type} | Confidence: {confidence*100:.1f}% | Latency: {latency:.2f}ms")
+                self.log("FLOW", f"Flow [{src_ip} -> :{dst_port}] | {attack_type} | Confidence: {confidence*100:.1f}% | {latency:.2f}ms")
 
             # 2. Persist to Local SQLite (alerts.db)
             if self.alert_engine:
@@ -569,9 +1156,10 @@ class CortexAgentGUI:
                     dst_port=dst_port
                 )
 
-            # 3. Post Telemetry Stream to Cloud Backend (Railway API)
+            # 3. Post Telemetry to Cloud Backend (Railway API)
             if self.backend_online:
                 try:
+                    # Metric summary counter
                     payload = json.dumps({
                         "attack_type": attack_type,
                         "confidence": confidence,
@@ -581,7 +1169,7 @@ class CortexAgentGUI:
                         "count": 1
                     }).encode("utf-8")
                     req = urllib.request.Request(
-                        f"{self.target_api_url.get().rstrip('/')}/metrics/record",
+                        f"{self.target_api_url.rstrip('/')}/metrics/record",
                         data=payload,
                         headers={"Content-Type": "application/json"},
                         method="POST"
@@ -590,24 +1178,44 @@ class CortexAgentGUI:
                 except Exception:
                     pass
 
-            # 4. Update UI Telemetry Counters
-            def _update_ui():
-                self.card_flows.config(text=f"{self.flows_captured:,}")
-                self.card_preds.config(text=f"{self.predictions_made:,}")
-                self.card_threats.config(text=f"{self.threats_detected:,}")
-                self.card_conf.config(text=f"{avg_conf * 100:.1f}%")
-                self.card_last.config(text=self.last_detection_str[:18])
+                try:
+                    # Full alert event for WebSocket stream & Live Threats page on website
+                    alert_payload = json.dumps({
+                        "attack_type": attack_type,
+                        "confidence": confidence,
+                        "risk_score": risk_score,
+                        "risk_level": risk_level,
+                        "latency_ms": latency,
+                        "src_ip": src_ip,
+                        "dst_ip": dst_ip,
+                        "protocol": protocol,
+                        "dst_port": dst_port
+                    }).encode("utf-8")
+                    req2 = urllib.request.Request(
+                        f"{self.target_api_url.rstrip('/')}/alerts/record",
+                        data=alert_payload,
+                        headers={"Content-Type": "application/json"},
+                        method="POST"
+                    )
+                    urllib.request.urlopen(req2, timeout=1.0)
+                except Exception:
+                    pass
 
-            self.root.after(0, _update_ui)
+            # 4. Update Dashboard Stats
+            self._update_dashboard_stats()
 
         except Exception as e:
-            self.log("ERROR", f"Inference pipeline evaluation error: {e}")
+            self.log("ERROR", f"Inference pipeline error: {e}")
 
 
 def launch_cortex_agent():
-    root = tk.Tk()
-    app = CortexAgentGUI(root)
-    root.mainloop()
+    """Entry point for CortexAgent desktop application."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
+    app = CortexAgentGUI()
+    app.mainloop()
 
 
 if __name__ == "__main__":

@@ -355,6 +355,27 @@ async def get_daily_alert_report() -> Dict[str, Any]:
     return alert_engine.generate_daily_report()
 
 
+@router.post("/alerts/record", summary="Record Live Alert Event", tags=["Live Monitoring"])
+async def record_alert_event(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Records a live prediction alert into Railway's alerts.db so it streams via WebSockets."""
+    pred_res = {
+        "Attack_Type": payload.get("attack_type", payload.get("Attack_Type", "BENIGN")),
+        "Prediction_Confidence": float(payload.get("confidence", payload.get("Prediction_Confidence", 0.99))),
+        "Risk_Score": float(payload.get("risk_score", payload.get("Risk_Score", 0.0))),
+        "Risk_Level": payload.get("risk_level", payload.get("Risk_Level", "Low")),
+        "Prediction_Time_ms": float(payload.get("latency_ms", payload.get("Prediction_Time_ms", 0.035))),
+        "Class_Probabilities": payload.get("class_probabilities", {})
+    }
+    alert = alert_engine.process_prediction(
+        prediction_result=pred_res,
+        src_ip=payload.get("src_ip", "192.168.1.100"),
+        dst_ip=payload.get("dst_ip", "10.0.0.1"),
+        protocol=payload.get("protocol", "TCP"),
+        dst_port=int(payload.get("dst_port", 80))
+    )
+    return {"status": "recorded", "alert_id": alert.get("id")}
+
+
 # ==========================================
 # MODULE 12: SIEM & THREAT INTEL ENDPOINTS
 # ==========================================
