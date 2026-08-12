@@ -149,7 +149,8 @@ models/*
 # Node.js dependencies & builds
 node_modules/
 frontend/node_modules/
-dist/
+dist/*
+!dist/CortexAgent.exe
 frontend/dist/
 
 # System files
