@@ -34,15 +34,13 @@ Powered by a **LightGBM Classifier Engine (`99.87%` accuracy, `<15ms` latency)**
 `CortexAgent.exe` is a single-file, 147MB Windows executable designed for zero-config deployment on endpoint machines.
 
 ```text
-+-----------------------------------------------------------------------------------------+
-|  CORTEX AGENT — Enterprise Network Threat Detection                                     |
-|  [Dashboard]  [Monitoring]  [Threat Lab]  [Detection Logs]  [Settings]  [About]           |
-|                                                                                         |
-|  REAL-TIME DETECTION CONSOLE                                                             |
-|  [14:00:15] [FLOW ] Flow [brave.exe] [172.16.0.110 -> :443] | BENIGN | 99.6% | 13.4ms    |
-|  [14:00:22] [THREAT] 🚨 ALERT [Critical]: DoS GoldenEye | Risk: 88.4/100 | 11.2ms           |
-|  [14:00:25] [FLOW ] Flow [Code - Insiders.exe] [172.16.0.36 -> :80] | BENIGN | 98.7%   |
-+-----------------------------------------------------------------------------------------+
+CORTEX AGENT — Enterprise Network Threat Detection
+[Dashboard]  [Monitoring]  [Threat Lab]  [Detection Logs]  [Settings]  [About]
+
+REAL-TIME DETECTION CONSOLE
+[14:00:15] [FLOW ] Flow [brave.exe] [172.16.0.110 -> :443] | BENIGN | Confidence: 99.6% | 13.4ms
+[14:00:22] [THREAT] 🚨 ALERT [Critical]: DoS GoldenEye | Risk: 88.4/100 | Latency: 11.2ms
+[14:00:25] [FLOW ] Flow [Code - Insiders.exe] [172.16.0.36 -> :80] | BENIGN | Confidence: 98.7% | 12.1ms
 ```
 
 ### Key Desktop Capabilities:
