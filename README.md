@@ -147,7 +147,32 @@ git clone https://github.com/saifvector/cortex-nids.git
 cd cortex-nids
 ```
 
-### Option 1: Automated Local Setup
+### 🚀 Option 1: Single-Click Platform Launcher (Windows)
+
+Start the complete CORTEX NIDS platform (FastAPI Backend + React SOC Dashboard) with automatic health checks and browser launch:
+
+```cmd
+# Double-click or run from terminal:
+launch.bat
+```
+
+* **Automated Pre-Flight Checks**: Verifies Python, Node.js, `.venv`, model artifacts, and `frontend\node_modules`.
+* **Health Polling**: Monitors `http://127.0.0.1:8000/health` and `http://localhost:3000` until both are ready.
+* **Browser Launch**: Opens the live SOC Dashboard automatically upon successful startup.
+* **Interactive Controls**: Press `S` to shutdown, `D` for Swagger API docs, `R` to reload, or `Q` to keep running in background.
+
+#### Stopping the Application Safely:
+
+```cmd
+# Double-click or run from terminal:
+stop.bat
+```
+* Identifies and terminates **only** the CORTEX NIDS processes on ports `8000` and `3000`.
+* Prevents terminating unrelated Python or Node.js processes running on your system.
+
+---
+
+### Option 2: Automated Local Setup
 
 #### Windows (PowerShell):
 ```powershell
