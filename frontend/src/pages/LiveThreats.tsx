@@ -15,6 +15,7 @@ interface LiveFlowEvent {
   riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
   srcIp: string;
   destPort: number;
+  destIp?: string;
   latencyMs: number;
 }
 
@@ -56,6 +57,7 @@ export const LiveThreats: React.FC = () => {
             riskLevel: data.risk_level || 'Low',
             srcIp: data.src_ip || '192.168.1.1',
             destPort: data.dst_port || 80,
+            destIp: data.dst_ip || '',
             latencyMs: typeof data.prediction_time_ms === 'number' ? Math.round(data.prediction_time_ms * 1000) / 1000 : 0.035,
           };
 
@@ -213,8 +215,8 @@ export const LiveThreats: React.FC = () => {
                 <tr>
                   <th className="p-3">Event ID</th>
                   <th className="p-3">Timestamp</th>
-                  <th className="p-3">Source IP</th>
-                  <th className="p-3">Dest Port</th>
+                  <th className="p-3">Source / Process</th>
+                  <th className="p-3">Destination</th>
                   <th className="p-3">Predicted Attack</th>
                   <th className="p-3">Confidence</th>
                   <th className="p-3">Risk Level</th>
@@ -235,8 +237,8 @@ export const LiveThreats: React.FC = () => {
                     >
                       <td className="p-3 text-slate-400 font-semibold">{evt.id}</td>
                       <td className="p-3 text-slate-400">{evt.timestamp}</td>
-                      <td className="p-3 text-slate-300">{evt.srcIp}</td>
-                      <td className="p-3 text-slate-400">{evt.destPort}</td>
+                      <td className="p-3 text-blue-300 font-medium">{evt.srcIp}</td>
+                      <td className="p-3 text-slate-300 font-medium">{evt.destIp ? `${evt.destIp}:${evt.destPort}` : evt.destPort}</td>
                       <td className="p-3 font-bold text-white">{evt.attack}</td>
                       <td className="p-3 text-emerald-400">{(evt.confidence * 100).toFixed(2)}%</td>
                       <td className="p-3">
@@ -299,12 +301,12 @@ export const LiveThreats: React.FC = () => {
                 <span className="text-cyan-400">{selectedEvent.latencyMs} ms</span>
               </div>
               <div className="flex justify-between p-2.5 rounded-xl bg-[#04070E]/60 border border-white/10">
-                <span className="text-slate-400">Source Host IP</span>
+                <span className="text-slate-400">Source / Process</span>
                 <span className="text-slate-200">{selectedEvent.srcIp}</span>
               </div>
               <div className="flex justify-between p-2.5 rounded-xl bg-[#04070E]/60 border border-white/10">
-                <span className="text-slate-400">Target Port</span>
-                <span className="text-slate-200">{selectedEvent.destPort}</span>
+                <span className="text-slate-400">Target Destination</span>
+                <span className="text-slate-200">{selectedEvent.destIp ? `${selectedEvent.destIp}:${selectedEvent.destPort}` : selectedEvent.destPort}</span>
               </div>
             </div>
 
