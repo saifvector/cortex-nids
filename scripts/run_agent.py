@@ -44,7 +44,7 @@ def main():
     parser.add_argument(
         "--server", "-s",
         type=str,
-        default="https://cortex-nids-production.up.railway.app",
+        default="https://web-production-31259.up.railway.app",
         help="Target NIDS backend API server (default: Railway production)"
     )
     parser.add_argument("--interval", "-i", type=float, default=1.0, help="Sampling interval in seconds")
@@ -99,11 +99,13 @@ def main():
                     site_label = resolve_service_name(c.raddr.ip, c.raddr.port, pname)
                     dst_display = f"{site_label} ({c.raddr.ip})" if site_label != f"Host {c.raddr.ip}" else c.raddr.ip
 
+                    import socket as py_socket
+                    proto = "TCP" if c.type == py_socket.SOCK_STREAM else "UDP"
                     payload = {
                         "src_ip": f"{local_ip} [{pname}]",
                         "dst_ip": dst_display,
                         "dst_port": c.raddr.port,
-                        "protocol": "TCP" if c.type == psutil.socket.SOCK_STREAM else "UDP",
+                        "protocol": proto,
                         "attack_type": "BENIGN",
                         "confidence": 0.995,
                         "risk_score": 0.08,
@@ -131,3 +133,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
