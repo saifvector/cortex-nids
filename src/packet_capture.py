@@ -45,7 +45,7 @@ def list_network_interfaces() -> List[Dict[str, str]]:
     return interfaces
 
 
-USER_APPS = ["brave", "chrome", "edge", "msedge", "firefox", "opera", "code", "spotify", "discord", "steam", "curl"]
+USER_APPS = ["brave", "chrome", "edge", "msedge", "firefox", "opera", "anydesk", "curl"]
 IGNORED_SYSTEM_NOISE = ["python", "python3", "uvicorn", "gunicorn", "node", "lockapp.exe", "startmenuexperiencehost.exe", "crossdeviceservice.exe", "phoneexperiencehost.exe", "nvcontainer.exe"]
 
 def resolve_service_name(dst_ip: str, dport: int, pname: str = "") -> str:
@@ -292,34 +292,10 @@ class PacketCapturer:
                     logger.debug("psutil connection capture error: %s", e)
 
             if not captured_real:
-                # Diverse real-world client laptop traffic (used in Cloud/Vercel/Railway deployments)
-                REAL_SERVICES_CATALOG = [
-                    ("brave.exe", "YouTube / Google (142.250.183.165)", 443, "TCP"),
-                    ("chrome.exe", "GitHub (140.82.114.25)", 443, "TCP"),
-                    ("chrome.exe", "Cloudflare CDN (104.18.25.53)", 443, "TCP"),
-                    ("msedge.exe", "Microsoft Windows Services (20.207.73.82)", 443, "TCP"),
-                    ("brave.exe", "Amazon CloudFront (Brave CDN) (54.148.58.58)", 443, "TCP"),
-                    ("firefox.exe", "Wikipedia Web (208.80.154.224)", 443, "TCP"),
-                    ("spotify.exe", "Spotify CDN (35.186.224.25)", 443, "TCP"),
-                    ("discord.exe", "Discord Gateway (162.159.135.232)", 443, "TCP"),
-                    ("code.exe", "GitHub Copilot API (140.82.112.21)", 443, "TCP"),
-                    ("chrome.exe", "Meta / Instagram (157.240.22.35)", 443, "TCP"),
-                    ("chrome.exe", "OpenAI API (104.18.7.192)", 443, "TCP"),
-                    ("chrome.exe", "Google Search / DNS (8.8.8.8)", 53, "UDP"),
-                    ("brave.exe", "Cloudflare 1.1.1.1 DNS (1.1.1.1)", 53, "UDP"),
-                ]
-                pname, dst_service, dport, proto = random.choice(REAL_SERVICES_CATALOG)
-                pkt = SyntheticPacket(
-                    src_ip=f"CLIENT-LAPTOP [{pname}]",
-                    dst_ip=dst_service,
-                    proto=proto,
-                    sport=random.randint(1024, 65535),
-                    dport=dport,
-                    length=random.randint(64, 1500)
-                )
-                callback(pkt)
-
-            time.sleep(random.uniform(0.1, 0.4))
+                # No active user sockets captured in this interval; pause briefly
+                time.sleep(0.4)
+            else:
+                time.sleep(random.uniform(0.1, 0.3))
 
     def stop_capture(self) -> None:
         """Stops the active capture session."""

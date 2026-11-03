@@ -48,77 +48,36 @@ export const LiveThreats: React.FC = () => {
     else setClientApp('chrome.exe');
   }, []);
 
-  // Sanitize and personalize event telemetry for the visitor's specific laptop
-  const sanitizeEvent = (evt: LiveFlowEvent, myIp: string, myProcess: string): LiveFlowEvent => {
-    let src = evt.srcIp;
-    let dst = evt.destIp || '';
-
-    // If source has server/cloud container noise or template, personalize to visitor device
-    if (
-      src.includes('10.224.') ||
-      src.includes('100.64.') ||
-      src.includes('python') ||
-      src.includes('CLIENT-LAPTOP') ||
-      src.startsWith('127.0.0.1')
-    ) {
-      const apps = [myProcess, myProcess, myProcess, 'spotify.exe', 'discord.exe', 'code.exe'];
-      const app = apps[Math.floor(Math.random() * apps.length)];
-      src = `${myIp} [${app}]`;
-    }
-
-    // Clean up internal CGNAT / cloud container destination IPs to authentic internet services
-    if (dst.includes('100.64.') || dst.includes('10.224.') || dst.startsWith('Host 100.')) {
-      const fallbackDestinations = [
-        'YouTube / Google (142.250.183.165)',
-        'GitHub (140.82.114.25)',
-        'Cloudflare CDN (104.18.25.53)',
-        'Amazon CloudFront (Brave CDN) (54.148.58.58)',
-        'Microsoft Windows Services (20.207.73.82)',
-        'Meta / Instagram (157.240.22.35)',
-        'Discord Gateway (162.159.135.232)',
-        'Spotify CDN (35.186.224.25)'
-      ];
-      dst = fallbackDestinations[Math.floor(Math.random() * fallbackDestinations.length)];
-    }
-
-    return { ...evt, srcIp: src, destIp: dst };
-  };
-
   // Initial load: Fetch client info & recent live alerts immediately so table is never blank
   useEffect(() => {
     let isMounted = true;
     const fetchInitial = async () => {
       try {
         // 1. Resolve connecting client's device IP
-        let currentIp = '192.168.0.194';
         try {
           const info = await apiService.getClientInfo();
           if (info && info.client_ip && info.client_ip !== '127.0.0.1') {
-            currentIp = info.client_ip;
             if (isMounted) setClientIp(info.client_ip);
           }
         } catch {
           // Use default
         }
 
-        // 2. Fetch recent alerts
+        // 2. Fetch recent alerts directly from the backend
         const recent = await apiService.getRecentAlerts(25);
         if (isMounted && Array.isArray(recent) && recent.length > 0) {
-          const mapped: LiveFlowEvent[] = recent.map((data: any) => {
-            const rawEvt: LiveFlowEvent = {
-              id: data.id || `INIT-${Date.now()}`,
-              timestamp: data.timestamp || new Date().toLocaleTimeString(),
-              attack: data.attack_type || 'BENIGN',
-              confidence: typeof data.confidence === 'number' ? data.confidence : 0.99,
-              riskScore: typeof data.risk_score === 'number' ? data.risk_score : 0,
-              riskLevel: (data.risk_level as any) || 'Low',
-              srcIp: data.src_ip || '192.168.0.194 [brave.exe]',
-              destPort: data.dst_port || 443,
-              destIp: data.dst_ip || '',
-              latencyMs: typeof data.prediction_time_ms === 'number' ? Math.round(data.prediction_time_ms * 1000) / 1000 : 0.035,
-            };
-            return sanitizeEvent(rawEvt, currentIp, clientApp);
-          });
+          const mapped: LiveFlowEvent[] = recent.map((data: any) => ({
+            id: data.id || `INIT-${Date.now()}`,
+            timestamp: data.timestamp || new Date().toLocaleTimeString(),
+            attack: data.attack_type || 'BENIGN',
+            confidence: typeof data.confidence === 'number' ? data.confidence : 0.99,
+            riskScore: typeof data.risk_score === 'number' ? data.risk_score : 0,
+            riskLevel: (data.risk_level as any) || 'Low',
+            srcIp: data.src_ip || '127.0.0.1',
+            destPort: data.dst_port || 443,
+            destIp: data.dst_ip || '',
+            latencyMs: typeof data.prediction_time_ms === 'number' ? Math.round(data.prediction_time_ms * 1000) / 1000 : 0.035,
+          }));
           setEvents(mapped);
         }
       } catch (e) {
@@ -129,7 +88,7 @@ export const LiveThreats: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [clientApp]);
+  }, []);
 
   // WebSocket Live Event Stream Effect with auto-reconnection
   useEffect(() => {
@@ -152,21 +111,18 @@ export const LiveThreats: React.FC = () => {
           try {
             const raw = JSON.parse(event.data);
             const items = Array.isArray(raw) ? raw : [raw];
-            const newEvents: LiveFlowEvent[] = items.map((data: any) => {
-              const rawEvt: LiveFlowEvent = {
-                id: data.id || `LIVE-${Date.now()}-${Math.random()}`,
-                timestamp: data.timestamp || new Date().toLocaleTimeString(),
-                attack: data.attack_type || 'BENIGN',
-                confidence: typeof data.confidence === 'number' ? data.confidence : 0.99,
-                riskScore: typeof data.risk_score === 'number' ? data.risk_score : 0,
-                riskLevel: (data.risk_level as any) || 'Low',
-                srcIp: data.src_ip || '192.168.0.194 [brave.exe]',
-                destPort: data.dst_port || 443,
-                destIp: data.dst_ip || '',
-                latencyMs: typeof data.prediction_time_ms === 'number' ? Math.round(data.prediction_time_ms * 1000) / 1000 : 0.035,
-              };
-              return sanitizeEvent(rawEvt, clientIp, clientApp);
-            });
+            const newEvents: LiveFlowEvent[] = items.map((data: any) => ({
+              id: data.id || `LIVE-${Date.now()}-${Math.random()}`,
+              timestamp: data.timestamp || new Date().toLocaleTimeString(),
+              attack: data.attack_type || 'BENIGN',
+              confidence: typeof data.confidence === 'number' ? data.confidence : 0.99,
+              riskScore: typeof data.risk_score === 'number' ? data.risk_score : 0,
+              riskLevel: (data.risk_level as any) || 'Low',
+              srcIp: data.src_ip || '127.0.0.1',
+              destPort: data.dst_port || 443,
+              destIp: data.dst_ip || '',
+              latencyMs: typeof data.prediction_time_ms === 'number' ? Math.round(data.prediction_time_ms * 1000) / 1000 : 0.035,
+            }));
 
             setEvents((prev) => {
               const existingIds = new Set(prev.map((e) => e.id));
