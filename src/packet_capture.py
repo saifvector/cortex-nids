@@ -292,28 +292,8 @@ class PacketCapturer:
                     logger.debug("psutil connection capture error: %s", e)
 
             if not captured_real:
-                # In headless cloud environments (Docker/Railway), stream authentic client web traffic
-                AUTHENTIC_SERVICES = [
-                    ("YouTube / Google", "142.250.183.165", 443, "TCP"),
-                    ("GitHub", "140.82.114.25", 443, "TCP"),
-                    ("Cloudflare CDN", "104.18.25.53", 443, "TCP"),
-                    ("AWS Cloud", "52.110.14.172", 443, "TCP"),
-                    ("Microsoft Azure", "20.192.44.82", 443, "TCP"),
-                    ("Google Search / DNS", "8.8.8.8", 53, "UDP"),
-                    ("Cloudflare DNS", "1.1.1.1", 53, "UDP"),
-                ]
-                svc_name, svc_ip, dport, proto = random.choice(AUTHENTIC_SERVICES)
-                pname = random.choice(["brave.exe", "chrome.exe", "msedge.exe"])
-                pkt = SyntheticPacket(
-                    src_ip=f"CLIENT-LAPTOP [{pname}]",
-                    dst_ip=f"{svc_name} ({svc_ip})",
-                    proto=proto,
-                    sport=random.randint(1024, 65535),
-                    dport=dport,
-                    length=random.randint(64, 1500)
-                )
-                callback(pkt)
-                time.sleep(random.uniform(0.3, 0.6))
+                # No active user sockets captured in this interval; pause briefly
+                time.sleep(0.5)
             else:
                 time.sleep(random.uniform(0.1, 0.3))
 

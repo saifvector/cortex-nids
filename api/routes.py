@@ -357,7 +357,7 @@ async def get_daily_alert_report() -> Dict[str, Any]:
 
 
 @router.get("/alerts/recent", summary="Get Recent Live Threat Alerts", tags=["Live Monitoring"])
-async def get_recent_alerts(request: Request, limit: int = Query(25, ge=1, le=100)) -> List[Dict[str, Any]]:
+async def get_recent_alerts(limit: int = Query(25, ge=1, le=100)) -> List[Dict[str, Any]]:
     """Returns the most recent live threat events from alerts.db for instant initial table render."""
     data = alert_engine.query_historical_threats_paginated(page=1, page_size=limit)
     raw_alerts = data.get("alerts", [])
@@ -367,44 +367,7 @@ async def get_recent_alerts(request: Request, limit: int = Query(25, ge=1, le=10
         a for a in raw_alerts 
         if "API-Client" not in a.get("src_ip", "") and "API-Server" not in a.get("dst_ip", "")
     ]
-    
-    if len(clean_alerts) >= 15:
-        return clean_alerts
-
-    from datetime import datetime, timedelta
-    forwarded = request.headers.get("x-forwarded-for")
-    client_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "192.168.0.194")
-    if client_ip in ("127.0.0.1", "localhost", "::1"):
-        client_ip = "192.168.0.194"
-        
-    now = datetime.now()
-    services = [
-        ("YouTube / Google", "142.250.183.165", 443, "TCP"),
-        ("GitHub", "140.82.114.25", 443, "TCP"),
-        ("Cloudflare CDN", "104.18.25.53", 443, "TCP"),
-        ("AWS Cloud", "52.110.14.172", 443, "TCP"),
-        ("Microsoft Azure", "20.192.44.82", 443, "TCP"),
-        ("Google Search / DNS", "8.8.8.8", 53, "UDP"),
-        ("Cloudflare DNS", "1.1.1.1", 53, "UDP"),
-    ]
-    seed_list = []
-    for i in range(limit):
-        t_str = (now - timedelta(seconds=i * 2)).strftime("%Y-%m-%d %H:%M:%S")
-        svc_name, svc_ip, dport, proto = services[i % len(services)]
-        seed_list.append({
-            "id": f"ALT-INIT-{now.strftime('%Y%m%d%H%M%S')}-{i:03d}",
-            "timestamp": t_str,
-            "src_ip": f"{client_ip} [brave.exe]",
-            "dst_ip": f"{svc_name} ({svc_ip})",
-            "dst_port": dport,
-            "protocol": proto,
-            "attack_type": "BENIGN",
-            "confidence": round(random.uniform(0.985, 0.999), 4),
-            "risk_score": round(random.uniform(0.04, 0.25), 2),
-            "risk_level": "Low",
-            "prediction_time_ms": round(random.uniform(11.0, 24.0), 3)
-        })
-    return seed_list
+    return clean_alerts
 
 
 @router.get("/client-info", summary="Get Client Device & IP Information", tags=["General"])
@@ -466,6 +429,10 @@ async def simulate_threat_attack(payload: Dict[str, Any], request: Request) -> D
         protocol="TCP",
         dst_port=target_ports.get(attack_type, 80)
     )
+    try:
+        await ws_manager.broadcast(alert)
+    except Exception as e:
+        logger.debug("Failed broadcasting simulated alert: %s", e)
     return {"status": "simulated", "alert": alert}
 
 
@@ -487,6 +454,10 @@ async def record_alert_event(payload: Dict[str, Any]) -> Dict[str, Any]:
         protocol=payload.get("protocol", "TCP"),
         dst_port=int(payload.get("dst_port", 80))
     )
+    try:
+        await ws_manager.broadcast(alert)
+    except Exception as e:
+        logger.debug("Failed broadcasting recorded alert: %s", e)
     return {"status": "recorded", "alert_id": alert.get("id")}
 
 

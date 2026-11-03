@@ -50,7 +50,8 @@ export const LiveThreats: React.FC = () => {
 
   // Format Source and Destination so placeholder labels are never displayed
   const formatSource = (src: string) => {
-    if (!src || src.includes('API-Client') || src.includes('CLIENT-LAPTOP') || src.startsWith('127.0.0.1')) {
+    if (!src) return clientIp;
+    if (src.includes('API-Client') || src.includes('CLIENT-LAPTOP')) {
       return `${clientIp} [${clientApp}]`;
     }
     return src;
@@ -58,7 +59,7 @@ export const LiveThreats: React.FC = () => {
 
   const formatDestination = (dst: string, port: number | string) => {
     if (!dst || dst.includes('API-Server')) {
-      return `YouTube / Google (142.250.183.165):${port || 443}`;
+      return `Port ${port || 443}`;
     }
     if (dst.includes(`:${port}`)) return dst;
     return `${dst}:${port || 443}`;
