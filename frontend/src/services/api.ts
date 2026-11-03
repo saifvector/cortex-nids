@@ -11,7 +11,22 @@ import {
   FeatureImportanceResponse,
 } from '../types/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+/**
+ * Dynamically resolves the API base URL.
+ * Automatically adapts when accessed from any other laptop/phone on Wi-Fi (e.g. http://192.168.0.194:8000),
+ * localhost, or custom domain/tunnel.
+ */
+export const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }
+  return 'http://localhost:8000';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -20,10 +35,28 @@ export const apiClient = axios.create({
   },
 });
 
+// Dynamic request interceptor ensuring active hostname is always used
+apiClient.interceptors.request.use((config) => {
+  if (!config.baseURL || config.baseURL === 'http://localhost:8000') {
+    config.baseURL = getApiBaseUrl();
+  }
+  return config;
+});
+
+/**
+ * Dynamically resolves the WebSocket URL for live alerts.
+ * Automatically connects to the host machine's backend (e.g. ws://192.168.0.194:8000/ws/alerts).
+ */
 export const getWebSocketUrl = (): string => {
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = API_BASE_URL.replace(/^https?:\/\//, '');
-  return `${wsProtocol}//${host}/ws/alerts`;
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    if (import.meta.env.VITE_API_BASE_URL) {
+      const host = import.meta.env.VITE_API_BASE_URL.replace(/^https?:\/\//, '');
+      return `${wsProtocol}//${host}/ws/alerts`;
+    }
+    return `${wsProtocol}//${window.location.hostname}:8000/ws/alerts`;
+  }
+  return 'ws://localhost:8000/ws/alerts';
 };
 
 export const apiService = {

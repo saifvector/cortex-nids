@@ -551,8 +551,19 @@ async def websocket_alerts_endpoint(websocket: WebSocket):
     and broadcasts them to the connected frontend client.
     """
     await ws_manager.connect(websocket)
-    # Start tracking from current max rowid so client receives new live events
-    last_rowid = alert_engine.get_max_rowid()
+
+    # Auto-ensure live monitor background capture is running
+    try:
+        from api.main import get_live_monitor
+        lm = get_live_monitor()
+        if lm and not lm.is_running:
+            lm.start_monitoring()
+    except Exception as e:
+        logger.warning("Could not auto-start live monitor from WebSocket: %s", e)
+
+    # Start tracking so the client immediately receives recent live traffic upon loading
+    current_max = alert_engine.get_max_rowid()
+    last_rowid = max(0, current_max - 8)
     try:
         while True:
             await asyncio.sleep(1.0)
@@ -566,3 +577,33 @@ async def websocket_alerts_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.warning("WebSocket streaming error: %s", e)
         ws_manager.disconnect(websocket)
+
+
+@router.get("/live-monitor/status", summary="Get Live Monitor Capture Status", tags=["Live Monitoring"])
+async def get_live_monitor_status():
+    """Returns the live packet monitor runtime state and capture counters."""
+    try:
+        from api.main import get_live_monitor
+        lm = get_live_monitor()
+        return {
+            "is_running": lm.is_running if lm else False,
+            "captured_packets": getattr(lm.capturer, "captured_packets_count", 0) if lm else 0,
+            "dropped_packets": getattr(lm.capturer, "dropped_packets_count", 0) if lm else 0
+        }
+    except Exception as e:
+        return {"is_running": False, "error": str(e)}
+
+
+@router.post("/live-monitor/start", summary="Start Live Monitor Capture", tags=["Live Monitoring"])
+async def start_live_monitor_endpoint():
+    """Starts the live packet monitor in background threads if not already active."""
+    try:
+        from api.main import get_live_monitor
+        lm = get_live_monitor()
+        if lm:
+            if not lm.is_running:
+                lm.start_monitoring()
+            return {"status": "started", "is_running": True}
+        return {"status": "error", "message": "Live monitor instance not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

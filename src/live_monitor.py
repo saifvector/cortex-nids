@@ -131,7 +131,21 @@ class LiveMonitor:
                 dst_port=dst_port
             )
 
-            # Notify FastAPI session metrics manager
+            # Direct in-process session metrics update
+            try:
+                from api.session_metrics import session_metrics_manager
+                session_metrics_manager.record_prediction(
+                    attack_type=pred_result.get("Attack_Type", "BENIGN"),
+                    confidence=float(pred_result.get("Prediction_Confidence", 0.99)),
+                    risk_score=float(pred_result.get("Risk_Score", 0.0)),
+                    risk_level=pred_result.get("Risk_Level", "Low"),
+                    latency_ms=float(pred_result.get("Prediction_Time_ms", 0.035)),
+                    count=1
+                )
+            except Exception:
+                pass
+
+            # Notify FastAPI session metrics manager via HTTP if running out-of-process
             try:
                 import json
                 import urllib.request
@@ -149,7 +163,7 @@ class LiveMonitor:
                     headers={"Content-Type": "application/json"},
                     method="POST"
                 )
-                urllib.request.urlopen(req, timeout=1.0)
+                urllib.request.urlopen(req, timeout=0.5)
             except Exception:
                 pass
 

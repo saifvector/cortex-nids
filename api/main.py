@@ -14,13 +14,17 @@ venv_site_packages = PROJECT_ROOT / ".venv" / "Lib" / "site-packages"
 if venv_site_packages.exists() and str(venv_site_packages) not in sys.path:
     sys.path.insert(0, str(venv_site_packages))
 
+from contextlib import asynccontextmanager
+from typing import Optional
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from api.exceptions import setup_exception_handlers
 from api.middleware import setup_middleware
 from api.routes import router
 from src.config.config import ConfigManager
 from src.utils.logging import configure_logging
+from src.live_monitor import LiveMonitor
 
 # Configure system logging
 try:
@@ -32,16 +36,47 @@ except Exception:
 
 logger = logging.getLogger("NIDS.api")
 
+_live_monitor: Optional[LiveMonitor] = None
+
+
+def get_live_monitor() -> Optional[LiveMonitor]:
+    """Returns the singleton live intrusion monitor instance."""
+    global _live_monitor
+    return _live_monitor
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan context manager.
+    Automatically starts the Live Threat Packet Monitor in background threads on startup,
+    allowing live network traffic to stream to any connected device or browser without manual commands.
+    """
+    global _live_monitor
+    try:
+        logger.info("Auto-starting CORTEX Live Intrusion Monitor background service...")
+        _live_monitor = LiveMonitor()
+        _live_monitor.start_monitoring()
+        logger.info("CORTEX Live Intrusion Monitor active: streaming live network packets to all connected clients.")
+    except Exception as e:
+        logger.error("Failed to auto-start LiveMonitor: %s", e)
+
+    yield
+
+    if _live_monitor and _live_monitor.is_running:
+        logger.info("Stopping Live Intrusion Monitor background service...")
+        _live_monitor.stop_monitoring()
+
+
 app = FastAPI(
     title="Network Intrusion Detection System (NIDS) REST API",
     description="Production-grade FastAPI backend exposing trained ensemble intrusion detection models, risk scoring, and CSV batch prediction.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
+    lifespan=lifespan
 )
-
-from fastapi.staticfiles import StaticFiles
 
 # Setup middleware (CORS, Rate Limiting, Request Logging)
 setup_middleware(app)

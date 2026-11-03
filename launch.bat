@@ -134,7 +134,7 @@ if !FRONTEND_ALREADY_RUNNING! equ 1 (
 :: -------------------------------------------------------------------
 if !BACKEND_ALREADY_RUNNING! equ 0 (
     echo [*] Starting FastAPI Backend on http://127.0.0.1:8000 ...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%PYTHON_EXE%' -ArgumentList 'scripts\run_api.py --host 127.0.0.1 --port 8000' -WorkingDirectory '%~dp0' -WindowStyle Minimized"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%PYTHON_EXE%' -ArgumentList 'scripts\run_api.py --host 0.0.0.0 --port 8000' -WorkingDirectory '%~dp0' -WindowStyle Minimized"
 )
 
 if !FRONTEND_ALREADY_RUNNING! equ 0 (
@@ -197,14 +197,26 @@ if !FRONTEND_READY! equ 0 (
 :: 5. Success Screen & Launch Browser
 :: -------------------------------------------------------------------
 echo.
+set "LAN_IP=127.0.0.1"
+for /f "tokens=*" %%a in ('powershell -NoProfile -Command "([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object AddressFamily -eq 'InterNetwork' | Select-Object -ExpandProperty IPAddressToString | Select-Object -First 1)"') do (
+    set "LAN_IP=%%a"
+)
+
 echo ======================================================================
 echo   [SUCCESS] CORTEX NIDS PLATFORM IS FULLY OPERATIONAL!
 echo ======================================================================
-echo   SOC Dashboard   : http://localhost:3000
-echo   FastAPI Backend : http://127.0.0.1:8000
-echo   Swagger API Docs: http://127.0.0.1:8000/docs
-echo   ReDoc Specs     : http://127.0.0.1:8000/redoc
-echo   Health Check    : http://127.0.0.1:8000/health
+echo   Local Dashboard    : http://localhost:3000
+echo   Share with Laptops : http://!LAN_IP!:3000
+echo   Live Threat Stream : http://!LAN_IP!:3000/live-threats
+echo.
+echo   FastAPI Backend API: http://!LAN_IP!:8000
+echo   Swagger API Docs   : http://!LAN_IP!:8000/docs
+echo   Health Check       : http://!LAN_IP!:8000/health
+echo ======================================================================
+echo.
+echo   [*] ANY LAPTOP OR DEVICE ON YOUR WI-FI:
+echo       Simply open: http://!LAN_IP!:3000
+echo       Live network traffic will stream automatically on their screen!
 echo ======================================================================
 echo.
 echo [*] Launching SOC Dashboard in your default web browser...
@@ -224,9 +236,10 @@ echo [COMMANDS]
 echo   [S] Stop all CORTEX NIDS services now (runs stop.bat)
 echo   [D] Open Swagger API Documentation in browser
 echo   [R] Reload Dashboard in browser
+echo   [O] Open Public Online Link (Share with anyone on the internet)
 echo   [Q] Quit this launcher window (services keep running in background)
 echo.
-set /p "USER_CHOICE=Select an option [S/D/R/Q] and press Enter: "
+set /p "USER_CHOICE=Select an option [S/D/R/O/Q] and press Enter: "
 
 if /i "%USER_CHOICE%"=="S" (
     echo.
@@ -243,6 +256,13 @@ if /i "%USER_CHOICE%"=="D" (
 if /i "%USER_CHOICE%"=="R" (
     echo [*] Reloading Dashboard...
     start "" "http://localhost:3000"
+    goto :MENU_LOOP
+)
+
+if /i "%USER_CHOICE%"=="O" (
+    echo [*] Launching public online tunnel via LocalTunnel...
+    echo [*] A public URL will be generated so anyone on any laptop can view your dashboard!
+    start cmd.exe /k "title CORTEX Public Online Tunnel && npx --yes localtunnel --port 3000"
     goto :MENU_LOOP
 )
 

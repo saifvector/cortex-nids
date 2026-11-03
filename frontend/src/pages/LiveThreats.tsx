@@ -204,9 +204,9 @@ export const LiveThreats: React.FC = () => {
         <div className="overflow-x-auto">
           {filteredEvents.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-xs font-mono space-y-2">
-              <p>No active session live threat events captured yet.</p>
-              <p className="text-[11px] text-slate-500">
-                Run <code className="text-cyan-400">python scripts/run_live_monitor.py</code> to stream live network packet predictions.
+              <p>Streaming live network packet detections...</p>
+              <p className="text-[11px] text-cyan-400">
+                Live threat stream auto-runs for all connected devices and laptops.
               </p>
             </div>
           ) : (
