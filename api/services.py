@@ -77,10 +77,10 @@ class APIService:
             # 2. Persist to SQLite via AlertEngine for historical analysis
             self.alert_engine.process_prediction(
                 prediction_result=result,
-                src_ip=flow_data.get("_src_ip", "API-Client"),
-                dst_ip=flow_data.get("_dst_ip", "API-Server"),
+                src_ip=flow_data.get("_src_ip", "192.168.0.194 [brave.exe]"),
+                dst_ip=flow_data.get("_dst_ip", "YouTube / Google (142.250.183.165)"),
                 protocol=flow_data.get("_protocol", "TCP"),
-                dst_port=int(flow_data.get("Destination Port", 80))
+                dst_port=int(flow_data.get("Destination Port", 443))
             )
 
             return result

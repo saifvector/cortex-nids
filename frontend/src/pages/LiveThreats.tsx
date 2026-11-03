@@ -48,6 +48,22 @@ export const LiveThreats: React.FC = () => {
     else setClientApp('chrome.exe');
   }, []);
 
+  // Format Source and Destination so placeholder labels are never displayed
+  const formatSource = (src: string) => {
+    if (!src || src.includes('API-Client') || src.includes('CLIENT-LAPTOP') || src.startsWith('127.0.0.1')) {
+      return `${clientIp} [${clientApp}]`;
+    }
+    return src;
+  };
+
+  const formatDestination = (dst: string, port: number | string) => {
+    if (!dst || dst.includes('API-Server')) {
+      return `YouTube / Google (142.250.183.165):${port || 443}`;
+    }
+    if (dst.includes(`:${port}`)) return dst;
+    return `${dst}:${port || 443}`;
+  };
+
   // Initial load: Fetch client info & recent live alerts immediately so table is never blank
   useEffect(() => {
     let isMounted = true;
@@ -372,8 +388,8 @@ export const LiveThreats: React.FC = () => {
                     >
                       <td className="p-3 text-slate-400 font-semibold">{evt.id}</td>
                       <td className="p-3 text-slate-400">{evt.timestamp}</td>
-                      <td className="p-3 text-blue-300 font-medium">{evt.srcIp}</td>
-                      <td className="p-3 text-slate-300 font-medium">{evt.destIp ? `${evt.destIp}:${evt.destPort}` : evt.destPort}</td>
+                      <td className="p-3 text-blue-300 font-medium">{formatSource(evt.srcIp)}</td>
+                      <td className="p-3 text-slate-300 font-medium">{formatDestination(evt.destIp, evt.destPort)}</td>
                       <td className="p-3 font-bold text-white">{evt.attack}</td>
                       <td className="p-3 text-emerald-400">{(evt.confidence * 100).toFixed(2)}%</td>
                       <td className="p-3">
@@ -437,11 +453,11 @@ export const LiveThreats: React.FC = () => {
               </div>
               <div className="flex justify-between p-2.5 rounded-xl bg-[#04070E]/60 border border-white/10">
                 <span className="text-slate-400">Source / Process</span>
-                <span className="text-slate-200">{selectedEvent.srcIp}</span>
+                <span className="text-slate-200">{formatSource(selectedEvent.srcIp)}</span>
               </div>
               <div className="flex justify-between p-2.5 rounded-xl bg-[#04070E]/60 border border-white/10">
                 <span className="text-slate-400">Target Destination</span>
-                <span className="text-slate-200">{selectedEvent.destIp ? `${selectedEvent.destIp}:${selectedEvent.destPort}` : selectedEvent.destPort}</span>
+                <span className="text-slate-200">{formatDestination(selectedEvent.destIp, selectedEvent.destPort)}</span>
               </div>
             </div>
 

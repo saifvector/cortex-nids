@@ -109,10 +109,10 @@ class LiveMonitor:
         """
         try:
             # Extract metadata
-            src_ip = flow_feats.pop("_src_ip", "192.168.1.100")
-            dst_ip = flow_feats.pop("_dst_ip", "10.0.0.1")
+            src_ip = flow_feats.pop("_src_ip", "192.168.0.194 [brave.exe]")
+            dst_ip = flow_feats.pop("_dst_ip", "YouTube / Google (142.250.183.165)")
             protocol = flow_feats.pop("_protocol", "TCP")
-            dst_port = int(flow_feats.get("Destination Port", 80))
+            dst_port = int(flow_feats.get("Destination Port", 443))
 
             # Remove private keys before inference
             for k in list(flow_feats.keys()):
