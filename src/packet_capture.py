@@ -46,7 +46,12 @@ def list_network_interfaces() -> List[Dict[str, str]]:
 
 
 USER_APPS = ["brave", "chrome", "edge", "msedge", "firefox", "opera", "anydesk", "curl"]
-IGNORED_SYSTEM_NOISE = ["python", "python3", "uvicorn", "gunicorn", "node", "lockapp.exe", "startmenuexperiencehost.exe", "crossdeviceservice.exe", "phoneexperiencehost.exe", "nvcontainer.exe"]
+IGNORED_SYSTEM_NOISE = [
+    "python", "python3", "uvicorn", "gunicorn", "node",
+    "lockapp.exe", "startmenuexperiencehost.exe", "crossdeviceservice.exe",
+    "phoneexperiencehost.exe", "nvcontainer.exe", "nvidia overlay", "nvidia",
+    "agy.exe", "copilotapp.exe", "dbus", "kdeconnect"
+]
 
 def resolve_service_name(dst_ip: str, dport: int, pname: str = "") -> str:
     """Resolves IP to a human-readable website / service name."""
