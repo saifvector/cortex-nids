@@ -355,6 +355,13 @@ async def get_daily_alert_report() -> Dict[str, Any]:
     return alert_engine.generate_daily_report()
 
 
+@router.get("/alerts/recent", summary="Get Recent Live Threat Alerts", tags=["Live Monitoring"])
+async def get_recent_alerts(limit: int = Query(25, ge=1, le=100)) -> List[Dict[str, Any]]:
+    """Returns the most recent live threat events from alerts.db for instant initial table render."""
+    data = alert_engine.query_historical_threats_paginated(page=1, page_size=limit)
+    return data.get("alerts", [])
+
+
 @router.post("/alerts/record", summary="Record Live Alert Event", tags=["Live Monitoring"])
 async def record_alert_event(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Records a live prediction alert into Railway's alerts.db so it streams via WebSockets."""

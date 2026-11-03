@@ -151,6 +151,16 @@ export const apiService = {
     return res.data;
   },
 
+  // GET /alerts/recent
+  getRecentAlerts: async (limit = 25): Promise<any[]> => {
+    try {
+      const res = await apiClient.get<any[]>('/alerts/recent', { params: { limit } });
+      return res.data;
+    } catch {
+      return [];
+    }
+  },
+
   // GET /historical-threats/search
   searchHistoricalThreats: async (query: string, page = 1, pageSize = 20): Promise<any> => {
     const res = await apiClient.get<any>('/historical-threats/search', {

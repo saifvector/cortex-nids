@@ -4,7 +4,7 @@ import {
   Activity, Pause, Play, Trash2, Search, Filter, ShieldAlert, Wifi, Zap
 } from 'lucide-react';
 import { RiskBadge } from '../components/RiskBadge';
-import { getWebSocketUrl } from '../services/api';
+import { getWebSocketUrl, apiService } from '../services/api';
 
 interface LiveFlowEvent {
   id: string;
@@ -20,7 +20,7 @@ interface LiveFlowEvent {
 }
 
 export const LiveThreats: React.FC = () => {
-  // Session-only live alert state. Starts EMPTY when page loads or server restarts.
+  // Live alert state. Initialized with recent real traffic so table is immediately populated.
   const [events, setEvents] = useState<LiveFlowEvent[]>([]);
   const [isLive, setIsLive] = useState<boolean>(true);
   const [wsConnected, setWsConnected] = useState<boolean>(false);
@@ -32,56 +32,105 @@ export const LiveThreats: React.FC = () => {
 
   const [selectedEvent, setSelectedEvent] = useState<LiveFlowEvent | null>(null);
 
-  // WebSocket Live Event Stream Effect (Session Only - No SQLite DB initial fetch)
+  // Initial load: Fetch recent live alerts immediately from SQLite so table is never blank
   useEffect(() => {
-    if (!isLive) return;
-
-    let ws: WebSocket | null = null;
-    try {
-      const wsUrl = getWebSocketUrl();
-      ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        setWsConnected(true);
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          const newEvt: LiveFlowEvent = {
-            id: data.id || `LIVE-${Date.now()}`,
+    let isMounted = true;
+    const fetchInitial = async () => {
+      try {
+        const recent = await apiService.getRecentAlerts(25);
+        if (isMounted && Array.isArray(recent) && recent.length > 0) {
+          const mapped: LiveFlowEvent[] = recent.map((data: any) => ({
+            id: data.id || `INIT-${Date.now()}`,
             timestamp: data.timestamp || new Date().toLocaleTimeString(),
             attack: data.attack_type || 'BENIGN',
             confidence: typeof data.confidence === 'number' ? data.confidence : 0.99,
             riskScore: typeof data.risk_score === 'number' ? data.risk_score : 0,
-            riskLevel: data.risk_level || 'Low',
+            riskLevel: (data.risk_level as any) || 'Low',
             srcIp: data.src_ip || '192.168.1.1',
             destPort: data.dst_port || 80,
             destIp: data.dst_ip || '',
             latencyMs: typeof data.prediction_time_ms === 'number' ? Math.round(data.prediction_time_ms * 1000) / 1000 : 0.035,
-          };
-
-          setEvents((prev) => {
-            if (prev.some((e) => e.id === newEvt.id)) return prev;
-            return [newEvt, ...prev.slice(0, 49)];
-          });
-        } catch (e) {
-          console.error('Error parsing WebSocket live alert event:', e);
+          }));
+          setEvents(mapped);
         }
-      };
+      } catch (e) {
+        console.error('Error fetching initial live alerts:', e);
+      }
+    };
+    fetchInitial();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-      ws.onerror = () => {
-        setWsConnected(false);
-      };
+  // WebSocket Live Event Stream Effect with auto-reconnection
+  useEffect(() => {
+    if (!isLive) return;
 
-      ws.onclose = () => {
-        setWsConnected(false);
-      };
-    } catch {
-      setWsConnected(false);
-    }
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+    let isMounted = true;
+
+    const connect = () => {
+      try {
+        const wsUrl = getWebSocketUrl();
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          if (isMounted) setWsConnected(true);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const raw = JSON.parse(event.data);
+            const items = Array.isArray(raw) ? raw : [raw];
+            const newEvents: LiveFlowEvent[] = items.map((data: any) => ({
+              id: data.id || `LIVE-${Date.now()}-${Math.random()}`,
+              timestamp: data.timestamp || new Date().toLocaleTimeString(),
+              attack: data.attack_type || 'BENIGN',
+              confidence: typeof data.confidence === 'number' ? data.confidence : 0.99,
+              riskScore: typeof data.risk_score === 'number' ? data.risk_score : 0,
+              riskLevel: (data.risk_level as any) || 'Low',
+              srcIp: data.src_ip || '192.168.1.1',
+              destPort: data.dst_port || 80,
+              destIp: data.dst_ip || '',
+              latencyMs: typeof data.prediction_time_ms === 'number' ? Math.round(data.prediction_time_ms * 1000) / 1000 : 0.035,
+            }));
+
+            setEvents((prev) => {
+              const existingIds = new Set(prev.map((e) => e.id));
+              const fresh = newEvents.filter((e) => !existingIds.has(e.id));
+              if (fresh.length === 0) return prev;
+              return [...fresh, ...prev].slice(0, 50);
+            });
+          } catch (e) {
+            console.error('Error parsing WebSocket live alert event:', e);
+          }
+        };
+
+        ws.onerror = () => {
+          if (isMounted) setWsConnected(false);
+        };
+
+        ws.onclose = () => {
+          if (isMounted) {
+            setWsConnected(false);
+            reconnectTimeout = setTimeout(connect, 3000);
+          }
+        };
+      } catch {
+        if (isMounted) {
+          setWsConnected(false);
+          reconnectTimeout = setTimeout(connect, 3000);
+        }
+      }
+    };
+
+    connect();
 
     return () => {
+      isMounted = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (ws) ws.close();
     };
   }, [isLive]);

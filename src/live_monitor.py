@@ -145,28 +145,6 @@ class LiveMonitor:
             except Exception:
                 pass
 
-            # Notify FastAPI session metrics manager via HTTP if running out-of-process
-            try:
-                import json
-                import urllib.request
-                payload = json.dumps({
-                    "attack_type": pred_result.get("Attack_Type", "BENIGN"),
-                    "confidence": float(pred_result.get("Prediction_Confidence", 0.99)),
-                    "risk_score": float(pred_result.get("Risk_Score", 0.0)),
-                    "risk_level": pred_result.get("Risk_Level", "Low"),
-                    "latency_ms": float(pred_result.get("Prediction_Time_ms", 0.035)),
-                    "count": 1
-                }).encode("utf-8")
-                req = urllib.request.Request(
-                    "http://localhost:8000/metrics/record",
-                    data=payload,
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
-                urllib.request.urlopen(req, timeout=0.5)
-            except Exception:
-                pass
-
             # Broadcast WebSocket event asynchronously
             try:
                 loop = asyncio.get_event_loop()
