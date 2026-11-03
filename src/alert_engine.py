@@ -5,6 +5,7 @@ and provides multi-criteria filtering and report generation capabilities.
 """
 import json
 import logging
+import random
 import sqlite3
 import time
 from datetime import datetime
@@ -80,7 +81,7 @@ class AlertEngine:
             Structured alert event dictionary.
         """
         now = datetime.now()
-        alert_id = f"ALT-{now.strftime('%Y%m%d%H%M%S')}-{int(time.time() * 1000) % 1000}"
+        alert_id = f"ALT-{now.strftime('%Y%m%d%H%M%S')}-{int(time.time() * 1000) % 1000}-{random.randint(100, 999)}"
 
         alert_event = {
             "id": alert_id,
@@ -122,7 +123,7 @@ class AlertEngine:
             with sqlite3.connect(str(self.sqlite_path)) as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT INTO alerts VALUES (
+                    INSERT OR IGNORE INTO alerts VALUES (
                         :id, :timestamp, :attack_type, :confidence, :risk_score,
                         :risk_level, :src_ip, :dst_ip, :protocol, :dst_port,
                         :prediction_time_ms, :class_probabilities

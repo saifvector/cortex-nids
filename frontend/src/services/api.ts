@@ -161,6 +161,25 @@ export const apiService = {
     }
   },
 
+  // GET /client-info
+  getClientInfo: async (): Promise<{ client_ip: string; user_agent: string }> => {
+    try {
+      const res = await apiClient.get<{ client_ip: string; user_agent: string }>('/client-info');
+      return res.data;
+    } catch {
+      return { client_ip: '192.168.0.194', user_agent: '' };
+    }
+  },
+
+  // POST /alerts/simulate
+  simulateAttack: async (attackType: string, clientIp?: string): Promise<any> => {
+    const res = await apiClient.post<any>('/alerts/simulate', {
+      attack_type: attackType,
+      client_ip: clientIp,
+    });
+    return res.data;
+  },
+
   // GET /historical-threats/search
   searchHistoricalThreats: async (query: string, page = 1, pageSize = 20): Promise<any> => {
     const res = await apiClient.get<any>('/historical-threats/search', {

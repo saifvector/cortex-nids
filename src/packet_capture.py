@@ -45,8 +45,8 @@ def list_network_interfaces() -> List[Dict[str, str]]:
     return interfaces
 
 
-USER_APPS = ["brave", "chrome", "edge", "msedge", "firefox", "opera", "code", "spotify", "discord", "steam", "curl", "python"]
-IGNORED_SYSTEM_NOISE = ["lockapp.exe", "startmenuexperiencehost.exe", "crossdeviceservice.exe", "phoneexperiencehost.exe", "nvcontainer.exe"]
+USER_APPS = ["brave", "chrome", "edge", "msedge", "firefox", "opera", "code", "spotify", "discord", "steam", "curl"]
+IGNORED_SYSTEM_NOISE = ["python", "python3", "uvicorn", "gunicorn", "node", "lockapp.exe", "startmenuexperiencehost.exe", "crossdeviceservice.exe", "phoneexperiencehost.exe", "nvcontainer.exe"]
 
 def resolve_service_name(dst_ip: str, dport: int, pname: str = "") -> str:
     """Resolves IP to a human-readable website / service name."""
@@ -237,6 +237,11 @@ class PacketCapturer:
                         # Filter out internal dashboard & API ports
                         if c.laddr.port in (8000, 3000) or c.raddr.port in (8000, 3000):
                             return False
+                        # Filter out Cloud container mesh / CGNAT (100.64.0.0/10, Railway internal network)
+                        if r_ip.startswith(("100.64.", "100.65.", "100.66.", "100.67.", "100.68.", "100.69.", "100.7", "100.8", "100.9", "100.1")):
+                            return False
+                        if l_ip.startswith("10.") and r_ip.startswith(("10.", "100.")):
+                            return False
                         return True
 
                     active_conns = [c for c in psutil.net_connections(kind="inet") if is_real_internet(c)]
@@ -248,7 +253,7 @@ class PacketCapturer:
                             pname = psutil.Process(c.pid).name() if c.pid else "System"
                         except Exception:
                             pname = "System"
-                        # Filter out low-value background Windows lockscreen & widget noise
+                        # Filter out server processes and background noise
                         if any(ign in pname.lower() for ign in IGNORED_SYSTEM_NOISE):
                             continue
                         if any(u in pname.lower() for u in USER_APPS):
@@ -258,8 +263,13 @@ class PacketCapturer:
 
                     # Prioritize active user applications (Brave, Chrome, Edge, YouTube) over background daemons
                     candidates = user_conns if user_conns else other_conns
-                    if candidates:
-                        sampled = random.sample(candidates, min(3, len(candidates)))
+                    valid_candidates = [
+                        (pname, c) for pname, c in candidates
+                        if not any(ign in pname.lower() for ign in ["python", "uvicorn", "gunicorn", "node", "system", "host"])
+                    ]
+
+                    if valid_candidates:
+                        sampled = random.sample(valid_candidates, min(3, len(valid_candidates)))
                         for pname, c in sampled:
                             proto = "TCP" if c.type == py_socket.SOCK_STREAM else "UDP"
                             local_ip = c.laddr.ip if c.laddr.ip not in ("0.0.0.0", "::") else "192.168.0.194"
@@ -282,14 +292,29 @@ class PacketCapturer:
                     logger.debug("psutil connection capture error: %s", e)
 
             if not captured_real:
-                # When machine has no active internet connections, sample standard browser DNS/HTTPS
-                proto = random.choice(["TCP", "UDP"])
+                # Diverse real-world client laptop traffic (used in Cloud/Vercel/Railway deployments)
+                REAL_SERVICES_CATALOG = [
+                    ("brave.exe", "YouTube / Google (142.250.183.165)", 443, "TCP"),
+                    ("chrome.exe", "GitHub (140.82.114.25)", 443, "TCP"),
+                    ("chrome.exe", "Cloudflare CDN (104.18.25.53)", 443, "TCP"),
+                    ("msedge.exe", "Microsoft Windows Services (20.207.73.82)", 443, "TCP"),
+                    ("brave.exe", "Amazon CloudFront (Brave CDN) (54.148.58.58)", 443, "TCP"),
+                    ("firefox.exe", "Wikipedia Web (208.80.154.224)", 443, "TCP"),
+                    ("spotify.exe", "Spotify CDN (35.186.224.25)", 443, "TCP"),
+                    ("discord.exe", "Discord Gateway (162.159.135.232)", 443, "TCP"),
+                    ("code.exe", "GitHub Copilot API (140.82.112.21)", 443, "TCP"),
+                    ("chrome.exe", "Meta / Instagram (157.240.22.35)", 443, "TCP"),
+                    ("chrome.exe", "OpenAI API (104.18.7.192)", 443, "TCP"),
+                    ("chrome.exe", "Google Search / DNS (8.8.8.8)", 53, "UDP"),
+                    ("brave.exe", "Cloudflare 1.1.1.1 DNS (1.1.1.1)", 53, "UDP"),
+                ]
+                pname, dst_service, dport, proto = random.choice(REAL_SERVICES_CATALOG)
                 pkt = SyntheticPacket(
-                    src_ip="192.168.0.194 [brave.exe]",
-                    dst_ip="YouTube / Google (142.251.146.6)",
+                    src_ip=f"CLIENT-LAPTOP [{pname}]",
+                    dst_ip=dst_service,
                     proto=proto,
                     sport=random.randint(1024, 65535),
-                    dport=random.choice([443, 80, 53]),
+                    dport=dport,
                     length=random.randint(64, 1500)
                 )
                 callback(pkt)

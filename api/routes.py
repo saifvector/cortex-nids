@@ -5,9 +5,10 @@ batch CSV upload prediction, metrics, feature importances, live alerts, WebSocke
 """
 import asyncio
 import logging
+import random
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Response, UploadFile, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect, status
 
 from api.dependencies import get_api_service
 from api.schemas import (
@@ -360,6 +361,68 @@ async def get_recent_alerts(limit: int = Query(25, ge=1, le=100)) -> List[Dict[s
     """Returns the most recent live threat events from alerts.db for instant initial table render."""
     data = alert_engine.query_historical_threats_paginated(page=1, page_size=limit)
     return data.get("alerts", [])
+
+
+@router.get("/client-info", summary="Get Client Device & IP Information", tags=["General"])
+async def get_client_info(request: Request) -> Dict[str, Any]:
+    """Returns the connecting client IP address and user-agent for dynamic localized streaming."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else "127.0.0.1"
+    
+    return {
+        "client_ip": client_ip,
+        "user_agent": request.headers.get("user-agent", "")
+    }
+
+
+@router.post("/alerts/simulate", summary="Simulate Threat Attack for Client", tags=["Live Monitoring"])
+async def simulate_threat_attack(payload: Dict[str, Any], request: Request) -> Dict[str, Any]:
+    """Simulates a live cyber attack against the requesting client's IP and broadcasts it."""
+    attack_type = payload.get("attack_type", "PortScan")
+    client_ip = payload.get("client_ip")
+    if not client_ip:
+        forwarded = request.headers.get("x-forwarded-for")
+        client_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "192.168.0.194")
+
+    # Threat signature mappings
+    risk_mapping = {
+        "PortScan": ("High", 78.5, 0.992),
+        "DDoS": ("Critical", 94.2, 0.998),
+        "DoS Hulk": ("High", 82.0, 0.989),
+        "Web Attack – SQL Injection": ("Critical", 96.5, 0.994),
+        "Bot": ("Medium", 58.0, 0.975),
+        "FTP-Patator": ("High", 72.0, 0.985),
+        "SSH-Patator": ("High", 74.0, 0.987)
+    }
+    risk_level, risk_score, confidence = risk_mapping.get(attack_type, ("High", 75.0, 0.98))
+    target_ports = {
+        "PortScan": payload.get("dst_port", 8080),
+        "DDoS": 80,
+        "DoS Hulk": 80,
+        "Web Attack – SQL Injection": 443,
+        "Bot": 6667,
+        "FTP-Patator": 21,
+        "SSH-Patator": 22
+    }
+
+    alert = alert_engine.process_prediction(
+        prediction_result={
+            "Attack_Type": attack_type,
+            "Prediction_Confidence": confidence,
+            "Risk_Score": risk_score,
+            "Risk_Level": risk_level,
+            "Prediction_Time_ms": round(random.uniform(8.0, 16.0), 3),
+            "Class_Probabilities": {attack_type: confidence, "BENIGN": round(1.0 - confidence, 4)}
+        },
+        src_ip=f"{client_ip} [ATTACK PROBE]",
+        dst_ip="Target Server (Your Machine)",
+        protocol="TCP",
+        dst_port=target_ports.get(attack_type, 80)
+    )
+    return {"status": "simulated", "alert": alert}
 
 
 @router.post("/alerts/record", summary="Record Live Alert Event", tags=["Live Monitoring"])
