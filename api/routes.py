@@ -118,7 +118,30 @@ async def batch_predict_csv(
     return summary
 
 
-    return summary
+@router.get("/predictions/download", summary="Download Batch Prediction Results CSV", tags=["Inference"])
+async def download_batch_predictions():
+    """Downloads the prediction_results.csv generated from the latest batch prediction."""
+    from src.utils.utils import get_absolute_path
+    csv_path = get_absolute_path("predictions/prediction_results.csv")
+    if not csv_path.exists():
+        raise HTTPException(status_code=404, detail="No batch predictions found. Run a batch prediction first.")
+    with open(csv_path, "r", encoding="utf-8") as f:
+        csv_content = f.read()
+    headers = {"Content-Disposition": "attachment; filename=cortex_batch_predictions.csv"}
+    return Response(content=csv_content, media_type="text/csv", headers=headers)
+
+
+@router.get("/sample_csv", summary="Download Sample Network Traffic CSV", tags=["Inference"])
+async def download_sample_csv():
+    """Returns sample network traffic flows in standard CICIDS2017 schema for batch testing."""
+    from src.utils.utils import get_absolute_path
+    csv_path = get_absolute_path("sample_test_traffic.csv")
+    if not csv_path.exists():
+        raise HTTPException(status_code=404, detail="Sample CSV not found.")
+    with open(csv_path, "r", encoding="utf-8") as f:
+        csv_content = f.read()
+    headers = {"Content-Disposition": "attachment; filename=sample_test_traffic.csv"}
+    return Response(content=csv_content, media_type="text/csv", headers=headers)
 
 
 @router.get("/metrics", response_model=MetricsResponse, summary="Get Active Session Metrics", tags=["Monitoring"])
