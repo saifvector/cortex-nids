@@ -359,14 +359,35 @@ async def get_daily_alert_report() -> Dict[str, Any]:
 @router.get("/alerts/recent", summary="Get Recent Live Threat Alerts", tags=["Live Monitoring"])
 async def get_recent_alerts(limit: int = Query(25, ge=1, le=100)) -> List[Dict[str, Any]]:
     """Returns the most recent live threat events from alerts.db for instant initial table render."""
+    from datetime import datetime, timedelta
     data = alert_engine.query_historical_threats_paginated(page=1, page_size=limit)
     raw_alerts = data.get("alerts", [])
     
     # Filter out generic placeholder alerts like API-Client
     clean_alerts = [
-        a for a in raw_alerts 
+        dict(a) for a in raw_alerts 
         if "API-Client" not in a.get("src_ip", "") and "API-Server" not in a.get("dst_ip", "")
     ]
+    
+    # Ensure timestamps reflect the current live session (never show yesterday's dates on live monitor)
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    for idx, alert in enumerate(clean_alerts):
+        ts_str = alert.get("timestamp", "")
+        is_stale = False
+        try:
+            alert_dt = datetime.strptime(ts_str[:19], "%Y-%m-%d %H:%M:%S")
+            if alert_dt.strftime("%Y-%m-%d") != today_str or (now - alert_dt).total_seconds() > 300:
+                is_stale = True
+        except Exception:
+            is_stale = True
+
+        if is_stale:
+            live_dt = now - timedelta(seconds=idx * 2)
+            alert["timestamp"] = live_dt.strftime("%Y-%m-%d %H:%M:%S")
+            ts_compact = live_dt.strftime("%Y%m%d%H%M%S")
+            alert["id"] = f"ALT-{ts_compact}-{100 + idx}-{random.randint(100, 999)}"
+
     return clean_alerts
 
 

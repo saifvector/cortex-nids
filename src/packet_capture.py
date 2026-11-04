@@ -50,7 +50,7 @@ IGNORED_SYSTEM_NOISE = [
     "python", "python3", "uvicorn", "gunicorn", "node",
     "lockapp.exe", "startmenuexperiencehost.exe", "crossdeviceservice.exe",
     "phoneexperiencehost.exe", "nvcontainer.exe", "nvidia overlay", "nvidia",
-    "agy.exe", "copilotapp.exe", "dbus", "kdeconnect"
+    "agy.exe", "copilotapp.exe", "dbus", "kdeconnect", "antigravity"
 ]
 
 def resolve_service_name(dst_ip: str, dport: int, pname: str = "") -> str:
